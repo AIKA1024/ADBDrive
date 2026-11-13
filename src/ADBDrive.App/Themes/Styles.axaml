@@ -1,0 +1,215 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <Styles.Resources>
+    <!-- Fluent 2 / Windows 11 深色调色板 -->
+    <SolidColorBrush x:Key="AppBg" Color="#17181B" />
+    <SolidColorBrush x:Key="SurfaceBg" Color="#232529" />
+    <SolidColorBrush x:Key="SurfaceBgHover" Color="#2A2C31" />
+    <SolidColorBrush x:Key="SurfaceBorder" Color="#33363C" />
+    <SolidColorBrush x:Key="SurfaceBorderStrong" Color="#41454C" />
+    <SolidColorBrush x:Key="TextPrimary" Color="#F2F3F5" />
+    <SolidColorBrush x:Key="TextSecondary" Color="#9BA1AA" />
+    <SolidColorBrush x:Key="TextTertiary" Color="#6E747D" />
+    <SolidColorBrush x:Key="AccentBrush" Color="#4CC2FF" />
+    <SolidColorBrush x:Key="AccentBrushHover" Color="#6FD0FF" />
+    <SolidColorBrush x:Key="SuccessBrush" Color="#4ADE80" />
+    <SolidColorBrush x:Key="WarningBrush" Color="#FBBF24" />
+    <SolidColorBrush x:Key="DangerBrush" Color="#F87171" />
+    <SolidColorBrush x:Key="InfoBrush" Color="#60A5FA" />
+    <SolidColorBrush x:Key="AccentText" Color="#0B1B26" />
+
+    <!--
+      内容居中的 ComboBox。
+      注意：/template/ 选择器只在 ControlTheme 内部生效，写在普通 Style 里不会匹配模板元素，
+      所以这里必须做成 ControlTheme 再用 Theme= 引用。
+    -->
+    <ControlTheme x:Key="CenteredComboBox" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+      <Style Selector="^ /template/ ContentControl#ContentPresenter">
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+      </Style>
+
+      <!-- 关键：TextBox 必须横向拉伸，否则它只有内容宽，TextAlignment=Center 没有居中空间 -->
+      <Style Selector="^ /template/ TextBox#PART_EditableTextBox">
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+      </Style>
+
+      <Style Selector="^ /template/ TextBlock#PlaceholderTextBlock">
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="TextAlignment" Value="Center" />
+      </Style>
+    </ControlTheme>
+  </Styles.Resources>
+
+  <Style Selector="Window">
+    <Setter Property="Background" Value="{StaticResource AppBg}" />
+    <Setter Property="FontFamily" Value="Microsoft YaHei UI, Segoe UI" />
+  </Style>
+
+  <Style Selector="TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+    <Setter Property="TextWrapping" Value="NoWrap" />
+  </Style>
+
+  <Style Selector="TextBlock.muted">
+    <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
+    <Setter Property="FontSize" Value="12" />
+  </Style>
+
+  <Style Selector="TextBlock.tiny">
+    <Setter Property="Foreground" Value="{StaticResource TextTertiary}" />
+    <Setter Property="FontSize" Value="11" />
+  </Style>
+
+  <Style Selector="TextBlock.h1">
+    <Setter Property="FontSize" Value="18" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <Style Selector="TextBlock.sectionTitle">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
+  </Style>
+
+  <Style Selector="TextBlock.mono">
+    <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, monospace" />
+    <Setter Property="FontSize" Value="11.5" />
+  </Style>
+
+  <Style Selector="Border.card">
+    <Setter Property="Background" Value="{StaticResource SurfaceBg}" />
+    <Setter Property="BorderBrush" Value="{StaticResource SurfaceBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="16" />
+  </Style>
+
+  <Style Selector="Border.chip">
+    <Setter Property="Background" Value="#282A2F" />
+    <Setter Property="BorderBrush" Value="{StaticResource SurfaceBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="20" />
+    <Setter Property="Padding" Value="10,5" />
+  </Style>
+
+  <Style Selector="Border.deviceCard">
+    <Setter Property="Background" Value="#212328" />
+    <Setter Property="BorderBrush" Value="{StaticResource SurfaceBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="14" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
+        <BrushTransition Property="Background" Duration="0:0:0.15" />
+      </Transitions>
+    </Setter>
+  </Style>
+
+  <Style Selector="Border.deviceCard:pointerover">
+    <Setter Property="Background" Value="#25282D" />
+    <Setter Property="BorderBrush" Value="{StaticResource SurfaceBorderStrong}" />
+  </Style>
+
+  <Style Selector="Ellipse.dot">
+    <Setter Property="Width" Value="8" />
+    <Setter Property="Height" Value="8" />
+  </Style>
+
+  <Style Selector="Button">
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="MinHeight" Value="30" />
+    <Setter Property="Padding" Value="12,4" />
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="Background" Value="#2E3137" />
+    <Setter Property="BorderBrush" Value="#3D4149" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="Button:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#383C43" />
+    <Setter Property="BorderBrush" Value="#4A4F58" />
+    <Setter Property="TextBlock.Foreground" Value="{StaticResource TextPrimary}" />
+  </Style>
+
+  <Style Selector="Button:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="#22252A" />
+  </Style>
+
+  <Style Selector="Button.primary">
+    <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource AccentText}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource AccentBrushHover}" />
+    <Setter Property="BorderBrush" Value="{StaticResource AccentBrushHover}" />
+    <Setter Property="TextBlock.Foreground" Value="{StaticResource AccentText}" />
+  </Style>
+
+  <Style Selector="Button.ghost">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
+  </Style>
+
+  <Style Selector="Button.ghost:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#2C2F35" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="TextBlock.Foreground" Value="{StaticResource TextPrimary}" />
+  </Style>
+
+  <Style Selector="Button.danger">
+    <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+  </Style>
+
+  <Style Selector="Button.icon">
+    <Setter Property="Width" Value="30" />
+    <Setter Property="Height" Value="30" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
+    <Setter Property="FontSize" Value="14" />
+  </Style>
+
+  <Style Selector="TextBox">
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="Background" Value="#1B1D21" />
+    <Setter Property="BorderBrush" Value="{StaticResource SurfaceBorder}" />
+    <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+  </Style>
+
+  <Style Selector="ComboBox">
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="Background" Value="#1B1D21" />
+    <Setter Property="BorderBrush" Value="{StaticResource SurfaceBorder}" />
+  </Style>
+
+  <Style Selector="CheckBox">
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
+  </Style>
+
+  <Style Selector="ScrollViewer">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+
+  <Style Selector="ToolTip">
+    <Setter Property="FontSize" Value="12" />
+  </Style>
+
+</Styles>

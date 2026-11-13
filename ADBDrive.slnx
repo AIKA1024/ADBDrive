@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ADBDrive.App/ADBDrive.App.csproj" />
+    <Project Path="src/ADBDrive.Core/ADBDrive.Core.csproj" />
+    <Project Path="src/ADBDrive.SelfTest/ADBDrive.SelfTest.csproj" />
+  </Folder>
+</Solution>

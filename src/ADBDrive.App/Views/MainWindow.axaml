@@ -1,0 +1,323 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:ADBDrive.ViewModels"
+        x:Class="ADBDrive.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="ADBDrive · 远程 ADB 磁盘"
+        Width="1180" Height="820"
+        MinWidth="980" MinHeight="660"
+        WindowStartupLocation="CenterScreen"
+        Icon="/Assets/app-256.png"
+>
+
+  <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Margin="0">
+    <!-- ===== 顶栏 ===== -->
+    <Border Grid.Row="0" Padding="22,16,22,12">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <Border Width="38" Height="38" CornerRadius="10" ClipToBounds="True">
+            <Image Source="/Assets/app-256.png" Width="38" Height="38" Stretch="UniformToFill" />
+          </Border>
+          <StackPanel VerticalAlignment="Center" Spacing="1">
+            <TextBlock Classes="h1" Text="ADBDrive" />
+            <TextBlock Classes="muted" Text="把远程 Android 设备挂载为 Windows 盘符" />
+          </StackPanel>
+        </StackPanel>
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Border Classes="chip" ToolTip.Tip="{Binding AdbPathText}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Ellipse Classes="dot" Fill="{Binding AdbStatusBrush}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding AdbStatus}" FontSize="12" VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
+          <Border Classes="chip" ToolTip.Tip="{Binding DokanDetail}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Ellipse Classes="dot" Fill="{Binding DokanStatusBrush}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding DokanStatus}" FontSize="12" VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
+          <Button Classes="icon" Content="&#xE72C;" Command="{Binding RefreshCommand}" ToolTip.Tip="刷新设备列表" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- ===== 提示条 ===== -->
+    <Border Grid.Row="1"
+            IsVisible="{Binding BannerVisible}"
+            Margin="22,0,22,10"
+            Padding="14,10"
+            CornerRadius="8"
+            Background="#33280F"
+            BorderBrush="#6B5518"
+            BorderThickness="1">
+      <Grid ColumnDefinitions="*,Auto,Auto">
+        <TextBlock Text="{Binding BannerMessage}" TextWrapping="Wrap" FontSize="12.5"
+                   Foreground="#F0D08A" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" Margin="10,0,4,0"
+                    IsVisible="{Binding DokanMissing}" VerticalAlignment="Center">
+          <Button Classes="ghost" Content="下载 Dokan" Command="{Binding OpenDokanDownloadCommand}" />
+          <Button Classes="ghost" Content="重新检测" Command="{Binding RecheckDokanCommand}" />
+        </StackPanel>
+        <Button Grid.Column="2" Classes="icon ghost" Content="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                Command="{Binding DismissBannerCommand}" ToolTip.Tip="关闭提示" />
+      </Grid>
+    </Border>
+
+    <!-- ===== 主内容 ===== -->
+    <Grid Grid.Row="2" ColumnDefinitions="440,*" ColumnSpacing="14" Margin="22,0,22,12">
+
+      <!-- 左：我的设备 -->
+      <Border Classes="card" Padding="14">
+        <Grid RowDefinitions="Auto,*">
+          <Grid ColumnDefinitions="*,Auto" Margin="2,0,2,10">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Classes="sectionTitle" Text="我的设备" VerticalAlignment="Center" />
+              <TextBlock Classes="tiny" Text="{Binding DeviceCountText}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Grid>
+
+          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+              <StackPanel IsVisible="{Binding !HasDevices}" Spacing="6" Margin="4,28,4,0" HorizontalAlignment="Center">
+                <TextBlock Text="&#xE8B7;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                           FontSize="28" Foreground="#4A4F58" HorizontalAlignment="Center" />
+                <TextBlock Text="还没有设备" Foreground="#9BA1AA" FontSize="13" HorizontalAlignment="Center" />
+                <TextBlock Text="在右侧填写手机的 IP:端口，或从「ADB 设备」里直接挂载"
+                           Classes="tiny" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="280" />
+              </StackPanel>
+
+              <ItemsControl ItemsSource="{Binding Devices}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:DeviceViewModel">
+                    <Border Classes="deviceCard" Margin="0,0,0,10">
+                      <StackPanel Spacing="8">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                          <Ellipse Classes="dot" Fill="{Binding StatusBrush}" VerticalAlignment="Center" />
+                          <StackPanel Grid.Column="1" Margin="8,0,8,0" Spacing="1">
+                            <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock Classes="tiny" Text="{Binding Endpoint}" TextTrimming="CharacterEllipsis" />
+                          </StackPanel>
+                          <Border Grid.Column="2" Classes="chip" Padding="10,3" MinWidth="44" Background="#1B3350"
+                                  BorderBrush="#2A4E75">
+                            <TextBlock Text="{Binding DriveText}" FontSize="11.5" FontWeight="SemiBold"
+                                       Foreground="#8FD2FF"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       TextAlignment="Center" />
+                          </Border>
+                        </Grid>
+
+                        <StackPanel Orientation="Horizontal" Spacing="6" Margin="16,0,0,0">
+                          <TextBlock Text="{Binding StateText}" FontSize="12" FontWeight="SemiBold"
+                                     Foreground="{Binding StatusBrush}" />
+                          <TextBlock Classes="muted" Text="{Binding StatusText}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+
+                        <Grid ColumnDefinitions="Auto,*,Auto" Margin="16,0,0,0" ColumnSpacing="6">
+                          <TextBlock Classes="tiny" Text="挂载根" VerticalAlignment="Center" />
+                          <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="4">
+                            <TextBox Text="{Binding RootPath, Mode=TwoWay}" TextAlignment="Center"
+                                     MinHeight="26" FontSize="11.5" Padding="6,2" VerticalContentAlignment="Center"
+                                     IsEnabled="{Binding CanChangeRoot}"
+                                     ToolTip.Tip="可直接输入路径，或点右侧箭头选常用目录；已挂载时会自动卸载重挂" />
+                            <Button Grid.Column="1" Width="24" MinHeight="26" Padding="0" Classes="ghost"
+                                    FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10"
+                                    Content="&#xE70D;" ToolTip.Tip="常用挂载根">
+                              <Button.Flyout>
+                                <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                  <MenuItem Header="/sdcard（共享存储）" Command="{Binding PickRootCommand}" CommandParameter="/sdcard" />
+                                  <MenuItem Header="/storage/emulated/0" Command="{Binding PickRootCommand}" CommandParameter="/storage/emulated/0" />
+                                  <MenuItem Header="/data/local/tmp" Command="{Binding PickRootCommand}" CommandParameter="/data/local/tmp" />
+                                  <Separator />
+                                  <MenuItem Header="/data（需 root）" Command="{Binding PickRootCommand}" CommandParameter="/data" />
+                                  <MenuItem Header="/system（需 root）" Command="{Binding PickRootCommand}" CommandParameter="/system" />
+                                  <MenuItem Header="/（全盘，需 root）" Command="{Binding PickRootCommand}" CommandParameter="/" />
+                                </MenuFlyout>
+                              </Button.Flyout>
+                            </Button>
+                          </Grid>
+                          <Border Grid.Column="2" Classes="chip" Padding="7,2" Background="#33261A" BorderBrush="#5A3C1E"
+                                  IsVisible="{Binding IsRootIdentity}" VerticalAlignment="Center"
+                                  ToolTip.Tip="adbd 以 root 运行，可挂载 / 与 /data 等目录">
+                            <TextBlock Text="ROOT" FontSize="9.5" FontWeight="Bold" Foreground="#F0A85A" />
+                          </Border>
+                        </Grid>
+
+                        <Grid ColumnDefinitions="*,Auto,Auto" Margin="16,0,0,0" ColumnSpacing="10">
+                          <TextBlock Classes="tiny" Text="{Binding SubtitleText}" VerticalAlignment="Center"
+                                     TextTrimming="CharacterEllipsis" />
+                          <CheckBox Grid.Column="1" Content="自动连接" IsChecked="{Binding AutoConnect}"
+                                    FontSize="11" MinHeight="20" VerticalAlignment="Center"
+                                    ToolTip.Tip="启动 ADBDrive 时自动连接这台设备" />
+                          <CheckBox Grid.Column="2" Content="自动挂载" IsChecked="{Binding AutoMount}"
+                                    FontSize="11" MinHeight="20" VerticalAlignment="Center"
+                                    ToolTip.Tip="连接成功后自动挂载盘符" />
+                        </Grid>
+
+                        <TextBlock IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                   Text="{Binding ErrorMessage}" TextWrapping="Wrap" FontSize="11.5"
+                                   Foreground="#F87171" Margin="16,0,0,0" />
+
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,0">
+                          <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Button Content="连接" Classes="primary" Command="{Binding ConnectCommand}"
+                                    IsVisible="{Binding CanConnect}" />
+                            <Button Content="挂载" Classes="primary" Command="{Binding MountCommand}"
+                                    IsVisible="{Binding CanMount}" />
+                            <Button Content="打开" Command="{Binding OpenDriveCommand}"
+                                    IsVisible="{Binding IsMounted}" />
+                            <Button Content="卸载" Command="{Binding UnmountCommand}"
+                                    IsVisible="{Binding CanUnmount}" />
+                            <Button Content="断开" Command="{Binding DisconnectCommand}"
+                                    IsVisible="{Binding CanDisconnect}" />
+                          </StackPanel>
+                          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                            <ComboBox Width="88" ItemsSource="{Binding DriveLetterOptions}"
+                                      SelectedItem="{Binding SelectedDriveLetter}"
+                                      IsVisible="{Binding CanChangeDriveLetter}" ToolTip.Tip="首选盘符" />
+                            <Button Classes="icon ghost" Content="&#xE74D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                    Command="{Binding RemoveCommand}" ToolTip.Tip="从列表移除" />
+                          </StackPanel>
+                        </Grid>
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </ScrollViewer>
+        </Grid>
+      </Border>
+
+      <!-- 右：发现 + 添加 -->
+      <Grid Grid.Column="1" RowDefinitions="Auto,*" RowSpacing="14">
+
+        <Border Grid.Row="0" Classes="card">
+          <Grid RowDefinitions="Auto,Auto">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Classes="sectionTitle" Text="ADB 设备" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Classes="tiny" Text="{Binding DiscoveredCountText}"
+                         VerticalAlignment="Center" />
+            </Grid>
+            <ScrollViewer Grid.Row="1" MaxHeight="132" Margin="0,8,0,0" VerticalScrollBarVisibility="Auto">
+              <ItemsControl ItemsSource="{Binding Discovered}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:DiscoveredDeviceViewModel">
+                    <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4">
+                      <Ellipse Width="6" Height="6" VerticalAlignment="Center"
+                               Fill="{Binding IsOnline, Converter={x:Static vm:Converters.OnlineBrushConverter}}" />
+                      <StackPanel Grid.Column="1" Margin="8,0,8,0">
+                        <TextBlock Text="{Binding Name}" FontSize="12.5" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Classes="tiny" Text="{Binding Serial}" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                        <TextBlock Classes="tiny" Text="{Binding StateText}" VerticalAlignment="Center" />
+                        <Button Content="{Binding ActionText}" Command="{Binding MountCommand}"
+                                IsVisible="{Binding IsOnline}" FontSize="11.5" Padding="10,2" MinHeight="26" />
+                      </StackPanel>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </Grid>
+        </Border>
+
+        <Border Grid.Row="1" Classes="card">
+          <StackPanel Spacing="10">
+            <TextBlock Classes="sectionTitle" Text="添加远程设备" />
+            <Grid ColumnDefinitions="*,150" ColumnSpacing="8">
+              <TextBox Text="{Binding NewEndpoint}" PlaceholderText="192.168.1.20:5555" />
+              <TextBox Grid.Column="1" Text="{Binding NewName}" PlaceholderText="备注名（可选）" />
+            </Grid>
+            <Grid ColumnDefinitions="*,96,Auto" ColumnSpacing="8">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
+                <TextBox Text="{Binding NewRoot, Mode=TwoWay}" TextAlignment="Center"
+                         MinHeight="32" FontSize="12.5" Padding="10,4" VerticalContentAlignment="Center"
+                         ToolTip.Tip="可直接输入挂载根，或点右侧箭头选常用目录；非 root 设备只能访问 /sdcard 一类共享目录" />
+                <Button Grid.Column="1" Width="28" MinHeight="32" Padding="0" Classes="ghost"
+                        FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
+                        Content="&#xE70D;" ToolTip.Tip="常用挂载根">
+                  <Button.Flyout>
+                    <MenuFlyout Placement="BottomEdgeAlignedRight">
+                      <MenuItem Header="/sdcard（共享存储）" Command="{Binding PickNewRootCommand}" CommandParameter="/sdcard" />
+                      <MenuItem Header="/storage/emulated/0" Command="{Binding PickNewRootCommand}" CommandParameter="/storage/emulated/0" />
+                      <MenuItem Header="/data/local/tmp" Command="{Binding PickNewRootCommand}" CommandParameter="/data/local/tmp" />
+                      <Separator />
+                      <MenuItem Header="/data（需 root）" Command="{Binding PickNewRootCommand}" CommandParameter="/data" />
+                      <MenuItem Header="/system（需 root）" Command="{Binding PickNewRootCommand}" CommandParameter="/system" />
+                      <MenuItem Header="/（全盘，需 root）" Command="{Binding PickNewRootCommand}" CommandParameter="/" />
+                    </MenuFlyout>
+                  </Button.Flyout>
+                </Button>
+              </Grid>
+              <ComboBox Grid.Column="1" Theme="{StaticResource CenteredComboBox}" ItemsSource="{Binding DriveLetterOptions}"
+                        SelectedItem="{Binding NewDrive}" ToolTip.Tip="首选盘符" />
+              <Button Grid.Column="2" Classes="primary" Content="连接并挂载" Command="{Binding AddDeviceCommand}" />
+            </Grid>
+            <StackPanel Orientation="Horizontal" Spacing="18">
+              <CheckBox IsChecked="{Binding NewAutoConnect}" Content="启动时自动连接" />
+              <CheckBox IsChecked="{Binding NewAutoMount}" Content="连接后自动挂载" />
+            </StackPanel>
+
+            <Border Height="1" Background="#2E3137" Margin="0,2" />
+
+            <StackPanel Spacing="6">
+              <TextBlock Classes="sectionTitle" Text="前提" />
+              <TextBlock Classes="muted" TextWrapping="Wrap"
+                         Text="手机开启「无线调试」，或先用 USB 执行 adb tcpip 5555；首次连接需在手机上确认授权；安装 Dokan 驱动后资源管理器才会出现盘符。" />
+            </StackPanel>
+
+          </StackPanel>
+        </Border>
+
+      </Grid>
+    </Grid>
+
+    <!-- ===== 日志 ===== -->
+    <Border Grid.Row="3" Margin="22,0,22,0" Padding="14,10" Classes="card" CornerRadius="10">
+      <Grid RowDefinitions="Auto,Auto">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Classes="sectionTitle" Text="运行日志" VerticalAlignment="Center" />
+            <TextBlock Classes="tiny" Text="{Binding Logs.Count, StringFormat='{}{0} 条'}" VerticalAlignment="Center" />
+            <ComboBox Width="108" MinHeight="26" FontSize="11.5" Margin="6,0,0,0"
+                      ItemsSource="{Binding LogLevelOptions}" SelectedItem="{Binding SelectedLogLevel}" />
+          </StackPanel>
+          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+            <Button Classes="ghost" Content="打开目录" FontSize="11.5" Command="{Binding OpenLogFolderCommand}" />
+            <Button Classes="ghost" Content="清空" FontSize="11.5" Command="{Binding ClearLogsCommand}" />
+            <Button Classes="ghost" Content="收起 / 展开" FontSize="11.5" Command="{Binding ToggleLogCommand}" />
+          </StackPanel>
+        </Grid>
+
+        <Border Grid.Row="1" IsVisible="{Binding IsLogVisible}" Height="132" Margin="0,8,0,0"
+                Background="#141518" CornerRadius="8" Padding="10,8">
+          <ScrollViewer Name="LogScroll" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Logs}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:LogItemViewModel">
+                  <Grid ColumnDefinitions="Auto,Auto,*" Margin="0,0,0,1">
+                    <TextBlock Classes="mono" Text="{Binding Time}" Foreground="#5A616B" />
+                    <TextBlock Grid.Column="1" Classes="mono" Text="{Binding LevelText}"
+                               Foreground="{Binding LevelBrush}" Margin="8,0" />
+                    <TextBlock Grid.Column="2" Classes="mono" Text="{Binding Message}"
+                               TextWrapping="Wrap" Foreground="#C3C8D0" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Border>
+      </Grid>
+    </Border>
+
+    <!-- ===== 页脚 ===== -->
+    <Grid Grid.Row="4" ColumnDefinitions="*,Auto" Margin="24,6,24,10">
+      <TextBlock Classes="tiny" Text="ADBDrive · NativeAOT · Avalonia 12 · 远程 ADB 文件系统" />
+      <TextBlock Grid.Column="1" Classes="tiny" Text="{Binding ConfigPathText}" TextTrimming="CharacterEllipsis"
+                 ToolTip.Tip="{Binding ConfigPathText}" />
+    </Grid>
+  </Grid>
+</Window>
