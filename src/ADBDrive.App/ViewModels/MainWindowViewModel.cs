@@ -1,8 +1,10 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using ADBDrive.Core.Adb;
 using ADBDrive.Core.Config;
 using ADBDrive.Core.Diagnostics;
+using ADBDrive.Core.Localization;
 using ADBDrive.Core.Mount;
 using ADBDrive.Core.Sessions;
 using ADBDrive.Services;
@@ -19,20 +21,24 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private const int MaxLogItems = 900;
     private const int MaxLogBuffer = 3000;
 
+    private static readonly FontFamily ChineseFont = new("Microsoft YaHei UI, Segoe UI");
+    private static readonly FontFamily EnglishFont = new("Segoe UI Variable Text, Segoe UI");
+
     private readonly AppHost _host;
     private readonly Dispatcher _dispatcher;
     private readonly List<DeviceSession> _knownSessions = [];
+
     private readonly List<LogEntry> _logBuffer = [];
     private bool _refreshing;
 
     [ObservableProperty]
-    private string _adbStatus = "adb 检测中…";
+    private string _adbStatus = string.Empty;
 
     [ObservableProperty]
     private IBrush _adbStatusBrush = Brush.Parse("#6E747D");
 
     [ObservableProperty]
-    private string _dokanStatus = "Dokan 检测中…";
+    private string _dokanStatus = string.Empty;
 
     /// <summary>Dokan 的完整状态（含库/驱动版本），用于徽标的悬停提示。</summary>
     [ObservableProperty]
@@ -54,7 +60,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _newRoot = "/sdcard";
 
     [ObservableProperty]
-    private string _newDrive = "自动";
+    private DriveOption? _newDrive;
 
     [ObservableProperty]
     private bool _newAutoConnect = true;
@@ -66,7 +72,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private bool _isLogVisible = true;
 
     [ObservableProperty]
-    private string _deviceCountText = "暂无设备";
+    private string _deviceCountText = string.Empty;
 
     [ObservableProperty]
     private string? _bannerMessage;
@@ -84,26 +90,39 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private bool _hasDevices;
 
     [ObservableProperty]
-    private string _selectedLogLevel = "信息及以上";
+    private LogLevelOption? _selectedLogLevel;
+
+    [ObservableProperty]
+    private LanguageOption? _selectedLanguage;
+
+    /// <summary>关窗口时收进托盘（设置面板可改）。</summary>
+    [ObservableProperty]
+    private bool _minimizeToTray = true;
+
+    /// <summary>启动时直接最小化到托盘（设置面板可改）。</summary>
+    [ObservableProperty]
+    private bool _startMinimized;
 
     public MainWindowViewModel(AppHost host)
     {
         _host = host;
         _dispatcher = Dispatcher.UIThread;
 
-        DriveLetterOptions = ["自动"];
-        var used = DriveLetters.GetUsed();
-        foreach (var letter in "DEFGHIJKLMNOPQRSTUVWXYZ")
-        {
-            if (!used.Contains(letter))
-            {
-                DriveLetterOptions.Add($"{letter}:");
-            }
-        }
+        DriveLetterOptions = DriveOption.CreateAll();
+        NewDrive = DriveLetterOptions.FirstOrDefault();
+
+        _minimizeToTray = host.Config.MinimizeToTray;
+        _startMinimized = host.Config.StartMinimized;
+
+        RebuildLogLevelOptions(null);
+        BuildLanguageOptions();
 
         UpdateStatusChips();
+        UpdatePathTexts();
         _host.Manager.SessionsChanged += () => _dispatcher.Post(RefreshSessions);
         _host.Log.EntryWritten += entry => _dispatcher.Post(() => AppendLog(entry));
+
+        Loc.Changed += OnLanguageChanged;
 
         foreach (var entry in _host.Log.Snapshot())
         {
@@ -119,40 +138,150 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public ObservableCollection<LogItemViewModel> Logs { get; } = [];
 
-    public ObservableCollection<string> DriveLetterOptions { get; }
+    public ObservableCollection<DriveOption> DriveLetterOptions { get; }
 
-    public ObservableCollection<string> LogLevelOptions { get; } = ["信息及以上", "全部", "仅警告", "仅错误"];
+    public ObservableCollection<LogLevelOption> LogLevelOptions { get; } = [];
 
-    public string AdbPathText => _host.AdbPath ?? "未找到 adb.exe";
+    public ObservableCollection<LanguageOption> LanguageOptions { get; } = [];
+
+    /// <summary>中英文用各自的系统字体，看看英文下 Segoe UI 的字形比雅黑更自然。</summary>
+    public FontFamily UiFontFamily => Loc.Current == AppLanguage.English ? EnglishFont : ChineseFont;
+
+    public string AdbPathText => _host.AdbPath ?? Loc.T("status.adbPathMissing");
 
     public string ConfigPathText => _host.ConfigPath;
 
-    public string LogDirectoryText => _host.Log.LogDirectory ?? "未启用";
+    public string LogDirectoryText => _host.Log.LogDirectory ?? Loc.T("logs.disabled");
+
+    public string ConfigDirectoryText => Path.GetDirectoryName(ConfigPathText) ?? ConfigPathText;
+
+    /// <summary>日志条数（"12 条" / "12 entries"）。</summary>
+    public string LogCountText => Loc.Count("logs.count", Logs.Count);
+
+    public string VersionText =>
+        "ADBDrive v" + (typeof(MainWindowViewModel).Assembly.GetName().Version?.ToString(3) ?? "1.0.0")
+        + " · NativeAOT · Avalonia 12";
+
+    partial void OnMinimizeToTrayChanged(bool value)
+    {
+        _host.Config.MinimizeToTray = value;
+        _host.SaveConfig();
+        _host.Log.Info("设置", value ? "关闭窗口时收进托盘" : "关闭窗口时退出程序");
+    }
+
+    partial void OnStartMinimizedChanged(bool value)
+    {
+        _host.Config.StartMinimized = value;
+        _host.SaveConfig();
+        _host.Log.Info("设置", value ? "启动时最小化到托盘" : "启动时显示主窗口");
+    }
+
+    partial void OnSelectedLanguageChanged(LanguageOption? value)
+    {
+        if (value is null || value.Value == Loc.Preference)
+        {
+            return;
+        }
+
+        Loc.Apply(value.Value);
+        _host.Config.Language = value.Value.ToId();
+        _host.SaveConfig();
+        _host.Log.Info("设置", $"界面语言: {value.Value.ToId()}");
+    }
 
     /// <summary>日志滚动到末尾的请求。</summary>
     public event Action? LogAdded;
+
+    /// <summary>语言切换：所有由代码拼出来的文案都要重算。</summary>
+    private void OnLanguageChanged()
+    {
+        OnPropertyChanged(nameof(UiFontFamily));
+        UpdatePathTexts();
+        RefreshLanguageOptions();
+
+        var filter = SelectedLogLevel?.Value ?? LogLevelFilter.Info;
+        RebuildLogLevelOptions(filter);
+
+        // 盘符下拉里的「自动 / Auto」
+        foreach (var option in DriveLetterOptions)
+        {
+            option.Refresh();
+        }
+
+        OnPropertyChanged(nameof(NewDrive));
+
+        OnPropertyChanged(nameof(LogCountText));
+
+        UpdateStatusChips();
+        RefreshSessions();
+
+        foreach (var item in Discovered)
+        {
+            item.Refresh();
+        }
+    }
+
+    private void UpdatePathTexts()
+    {
+        OnPropertyChanged(nameof(AdbPathText));
+        OnPropertyChanged(nameof(LogDirectoryText));
+        OnPropertyChanged(nameof(ConfigDirectoryText));
+    }
+
+    private void BuildLanguageOptions()
+    {
+        foreach (var option in LanguageOption.CreateAll())
+        {
+            LanguageOptions.Add(option);
+        }
+
+        SelectedLanguage = LanguageOptions.FirstOrDefault(o => o.Value == Loc.Preference);
+    }
+
+    /// <summary>语言切换后只刷新「跟随系统」这类标签，集合本身不动。</summary>
+    private void RefreshLanguageOptions()
+    {
+        foreach (var option in LanguageOptions)
+        {
+            option.Refresh();
+        }
+
+        OnPropertyChanged(nameof(SelectedLanguage));
+    }
+
+    private void RebuildLogLevelOptions(LogLevelFilter? keep)
+    {
+        var filter = keep ?? SelectedLogLevel?.Value ?? LogLevelFilter.Info;
+        LogLevelOptions.Clear();
+        foreach (var option in LogLevelOption.CreateAll())
+        {
+            LogLevelOptions.Add(option);
+        }
+
+        SelectedLogLevel = LogLevelOptions.FirstOrDefault(o => o.Value == filter);
+    }
 
     private void UpdateStatusChips()
     {
         if (_host.AdbFound)
         {
-            AdbStatus = "adb 就绪";
+            AdbStatus = Loc.T("status.adbReady");
             AdbStatusBrush = Brush.Parse("#4ADE80");
         }
         else
         {
-            AdbStatus = "未找到 adb";
+            AdbStatus = Loc.T("status.adbMissing");
             AdbStatusBrush = Brush.Parse("#F87171");
         }
 
         DokanMissing = !_host.DokanInstalled;
-        DokanStatus = _host.DokanInstalled ? "Dokan 就绪" : "Dokan 未安装";
-        DokanDetail = _host.DokanStatus;
+        DokanStatus = _host.DokanInstalled ? Loc.T("status.dokanReady") : Loc.T("status.dokanMissing");
+        DokanDetail = _host.DokanStatus.Text;
         DokanStatusBrush = _host.DokanInstalled ? Brush.Parse("#4ADE80") : Brush.Parse("#FBBF24");
 
         if (!_host.DokanInstalled)
         {
-            BannerMessage = $"{_host.DokanStatus}。安装 Dokan 驱动后才能把设备挂载成盘符。";
+            BannerMessage = Loc.F("banner.dokanMissing", _host.DokanStatus.Text);
             BannerVisible = true;
         }
     }
@@ -193,7 +322,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 vm.Refresh();
             }
 
-            DeviceCountText = Devices.Count == 0 ? "暂无设备" : $"{Devices.Count} 台设备";
+            DeviceCountText = Devices.Count == 0
+                ? Loc.T("devices.countNone")
+                : Loc.Count("devices.count", Devices.Count);
             HasDevices = Devices.Count > 0;
         }
         finally
@@ -237,10 +368,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
             Logs.RemoveAt(0);
         }
 
+        OnPropertyChanged(nameof(LogCountText));
         LogAdded?.Invoke();
     }
 
-    partial void OnSelectedLogLevelChanged(string value) => RebuildLogs();
+    partial void OnSelectedLogLevelChanged(LogLevelOption? value) => RebuildLogs();
 
     private void RebuildLogs()
     {
@@ -250,14 +382,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
             Logs.Add(new LogItemViewModel(entry));
         }
 
+        OnPropertyChanged(nameof(LogCountText));
         LogAdded?.Invoke();
     }
 
-    private bool PassesFilter(LogEntry entry) => SelectedLogLevel switch
+    private bool PassesFilter(LogEntry entry) => SelectedLogLevel?.Value switch
     {
-        "全部" => true,
-        "仅警告" => entry.Level >= LogLevel.Warn,
-        "仅错误" => entry.Level >= LogLevel.Error,
+        LogLevelFilter.All => true,
+        LogLevelFilter.Warnings => entry.Level >= LogLevel.Warn,
+        LogLevelFilter.Errors => entry.Level >= LogLevel.Error,
         _ => entry.Level >= LogLevel.Info,
     };
 
@@ -286,7 +419,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             if (!await _host.Server.EnsureServerAsync(CancellationToken.None))
             {
-                DiscoveredCountText = "adb server 不可用";
+                DiscoveredCountText = Loc.T("devices.serverUnavailable");
                 return;
             }
 
@@ -299,18 +432,20 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 var item = new DiscoveredDeviceViewModel(
                     device.Serial,
                     device.Model ?? device.Device ?? device.Serial,
-                    AdbServerClient.DescribeState(device.State),
+                    device.State,
                     device.IsOnline,
                     saved.Contains(device.Serial));
                 item.MountCommand = new AsyncRelayCommand(() => MountDiscoveredAsync(item));
                 Discovered.Add(item);
             }
 
-            DiscoveredCountText = Discovered.Count == 0 ? "没有发现设备" : $"{Discovered.Count} 台在线/离线设备";
+            DiscoveredCountText = Discovered.Count == 0
+                ? Loc.T("devices.discoveredNone")
+                : Loc.Count("devices.discoveredCount", Discovered.Count);
         }
         catch (Exception ex)
         {
-            DiscoveredCountText = "读取设备列表失败";
+            DiscoveredCountText = Loc.T("devices.discoveredError");
             _host.Log.Warn("ADB", $"读取设备列表失败: {ex.Message}");
         }
     }
@@ -321,7 +456,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var endpoint = NormalizeEndpoint(NewEndpoint);
         if (string.IsNullOrWhiteSpace(endpoint))
         {
-            BannerMessage = "请填写设备地址，例如 192.168.1.20:5555";
+            BannerMessage = Loc.T("banner.needEndpoint");
             BannerVisible = true;
             return;
         }
@@ -337,7 +472,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             Endpoint = endpoint,
             DisplayName = string.IsNullOrWhiteSpace(NewName) ? null : NewName.Trim(),
             RootPath = root,
-            DriveLetter = NewDrive == "自动" || NewDrive.Length == 0 ? null : NewDrive[..1],
+            DriveLetter = NewDrive?.Letter?.ToString(),
             AutoConnect = NewAutoConnect,
             AutoMount = NewAutoMount,
         };
@@ -363,7 +498,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             }
             else if (session.State == SessionState.Unauthorized)
             {
-                BannerMessage = "设备未授权：请解锁手机并在弹窗中点击「允许」。之后会自动继续。";
+                BannerMessage = Loc.T("banner.unauthorized");
                 BannerVisible = true;
             }
             else if (session.State is SessionState.Error or SessionState.Offline)
@@ -439,6 +574,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         _logBuffer.Clear();
         Logs.Clear();
+        OnPropertyChanged(nameof(LogCountText));
     }
 
     [RelayCommand]
@@ -459,6 +595,26 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void OpenConfigFolder()
+    {
+        var directory = Path.GetDirectoryName(_host.ConfigPath);
+        if (string.IsNullOrEmpty(directory))
+        {
+            return;
+        }
+
+        try
+        {
+            Directory.CreateDirectory(directory);
+            Process.Start(new ProcessStartInfo("explorer.exe", directory) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _host.Log.Warn("设置", "打开配置目录失败: " + ex.Message);
+        }
+    }
+
+    [RelayCommand]
     private void OpenDokanDownload()
     {
         try
@@ -474,18 +630,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private void RecheckDokan()
     {
-        var installed = DokanSupport.IsInstalled(out var message);
-        DokanMissing = !installed;
-        DokanStatus = installed ? "Dokan 就绪" : "Dokan 未安装";
-        DokanDetail = message;
-        DokanStatusBrush = installed ? Brush.Parse("#4ADE80") : Brush.Parse("#FBBF24");
-        if (installed)
+        var status = DokanSupport.Check();
+        DokanMissing = !status.Installed;
+        DokanStatus = status.Installed ? Loc.T("status.dokanReady") : Loc.T("status.dokanMissing");
+        DokanDetail = status.Text;
+        DokanStatusBrush = status.Installed ? Brush.Parse("#4ADE80") : Brush.Parse("#FBBF24");
+        if (status.Installed)
         {
             BannerVisible = false;
         }
         else
         {
-            BannerMessage = message;
+            BannerMessage = Loc.F("banner.dokanMissing", status.Text);
             BannerVisible = true;
         }
     }

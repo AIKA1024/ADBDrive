@@ -1,6 +1,7 @@
 using ADBDrive.Core.Adb;
 using ADBDrive.Core.Config;
 using ADBDrive.Core.Diagnostics;
+using ADBDrive.Core.Localization;
 using ADBDrive.Core.Mount;
 using ADBDrive.Core.Paths;
 using ADBDrive.Core.Sessions;
@@ -17,13 +18,17 @@ public sealed class AppHost : IDisposable
         AppPaths.EnsureCreated();
         Log = new AppLog(AppPaths.LogDirectory);
         Config = ConfigStore.Load(AppPaths.ConfigFile);
+
+        // 语言要在创建任何界面之前生效，否则首帧会用默认语言渲染。
+        Loc.Apply(Config.Language);
+
         AdbPath = AdbLocator.Find(Config.AdbPath);
         Server = new AdbServerClient(Log, AdbPath);
         Manager = new DeviceSessionManager(Log, Config, Server);
-        DokanInstalled = DokanSupport.IsInstalled(out var dokanMessage);
-        DokanStatus = dokanMessage;
+        DokanStatus = DokanSupport.Check();
+        DokanInstalled = DokanStatus.Installed;
 
-        Log.Info("启动", $"ADBDrive 启动，adb={AdbPath ?? "<未找到>"}，{DokanStatus}");
+        Log.Info("启动", $"ADBDrive 启动，adb={AdbPath ?? "<未找到>"}，{DokanStatus.Text}");
         Manager.LoadFromConfig();
     }
 
@@ -41,7 +46,7 @@ public sealed class AppHost : IDisposable
 
     public bool DokanInstalled { get; }
 
-    public string DokanStatus { get; }
+    public DokanStatusInfo DokanStatus { get; }
 
     public string ConfigPath => AppPaths.ConfigFile;
 

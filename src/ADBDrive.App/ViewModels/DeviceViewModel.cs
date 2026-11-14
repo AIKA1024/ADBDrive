@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using ADBDrive.Core.Config;
+using ADBDrive.Core.Localization;
 using ADBDrive.Core.Mount;
 using ADBDrive.Core.Sessions;
 using Avalonia.Media;
@@ -24,19 +25,28 @@ public sealed partial class DeviceViewModel : ObservableObject
     [ObservableProperty]
     private string? _errorMessage;
 
-    public string SelectedDriveLetter
+    public DriveOption? SelectedDriveLetter
     {
-        get => string.IsNullOrWhiteSpace(_session.Config.DriveLetter)
-            ? "自动"
-            : $"{char.ToUpperInvariant(_session.Config.DriveLetter[0])}:";
+        get
+        {
+            var letter = _session.Config.DriveLetter;
+            var target = string.IsNullOrWhiteSpace(letter) ? (char?)null : char.ToUpperInvariant(letter[0]);
+            return DriveLetterOptions.FirstOrDefault(option => option.Letter == target);
+        }
         set
         {
-            if (value == SelectedDriveLetter)
+            if (value is null)
             {
                 return;
             }
 
-            _session.Config.DriveLetter = value is null or "自动" || value.Length == 0 ? null : value[..1];
+            var current = SelectedDriveLetter;
+            if (current is not null && current.Letter == value.Letter)
+            {
+                return;
+            }
+
+            _session.Config.DriveLetter = value.Letter?.ToString();
             OnPropertyChanged();
             _ = _afterAction();
         }
@@ -46,20 +56,12 @@ public sealed partial class DeviceViewModel : ObservableObject
     {
         _session = session;
         _afterAction = afterAction;
-        DriveLetterOptions = ["自动"];
-        var used = DriveLetters.GetUsed();
-        foreach (var letter in "DEFGHIJKLMNOPQRSTUVWXYZ")
-        {
-            if (!used.Contains(letter))
-            {
-                DriveLetterOptions.Add($"{letter}:");
-            }
-        }
+        DriveLetterOptions = DriveOption.CreateAll();
     }
 
     public DeviceSession Session => _session;
 
-    public ObservableCollection<string> DriveLetterOptions { get; }
+    public ObservableCollection<DriveOption> DriveLetterOptions { get; }
 
     public string Name => _session.DisplayName;
 
@@ -163,17 +165,17 @@ public sealed partial class DeviceViewModel : ObservableObject
 
     public string StatusText => _session.StatusMessage;
 
-    public string StateText => _session.State switch
+    public string StateText => Loc.T(_session.State switch
     {
-        SessionState.Disconnected => "未连接",
-        SessionState.Connecting => "连接中",
-        SessionState.Connected => "已连接",
-        SessionState.Mounted => "已挂载",
-        SessionState.Offline => "离线",
-        SessionState.Unauthorized => "待授权",
-        SessionState.Error => "错误",
-        _ => "未知",
-    };
+        SessionState.Disconnected => "sessionState.disconnected",
+        SessionState.Connecting => "sessionState.connecting",
+        SessionState.Connected => "sessionState.connected",
+        SessionState.Mounted => "sessionState.mounted",
+        SessionState.Offline => "sessionState.offline",
+        SessionState.Unauthorized => "sessionState.unauthorized",
+        SessionState.Error => "sessionState.error",
+        _ => "sessionState.unknown",
+    });
 
     public IBrush StatusBrush => _session.State switch
     {
@@ -206,11 +208,17 @@ public sealed partial class DeviceViewModel : ObservableObject
 
     /// <summary>身份信息（root / uid）；自动连接那两个开关单独用 CheckBox 展示。</summary>
     public string SubtitleText => _session.State is SessionState.Connected or SessionState.Mounted
-        ? $"身份 {_session.IdentityText}"
-        : "未连接";
+        ? Loc.F("device.identity", _session.IdentityText)
+        : Loc.T("sessionState.disconnected");
 
     public void Refresh()
     {
+        // 「自动 / Auto」这类文案跟着语言走，其余属性靠空名字一次性全部失效。
+        foreach (var option in DriveLetterOptions)
+        {
+            option.Refresh();
+        }
+
         OnPropertyChanged(string.Empty);
     }
 

@@ -1,14 +1,23 @@
 using ADBDrive.Core.Diagnostics;
+using ADBDrive.Core.Localization;
 using DokanNet;
 using DokanNet.Logging;
 
 namespace ADBDrive.Core.Mount;
 
+/// <summary>Dokan 状态：保留词条 key，界面按当前语言再取文本（切换语言后能跟着变）。</summary>
+public readonly record struct DokanStatusInfo(bool Installed, string Key, object?[] Args)
+{
+    public string Text => Loc.F(Key, Args);
+
+    public override string ToString() => Text;
+}
+
 /// <summary>Dokan 驱动安装状态检测。</summary>
 public static class DokanSupport
 {
     /// <summary>驱动是否可用（dokan2.dll 已安装且驱动版本 &gt; 0）。</summary>
-    public static bool IsInstalled(out string message)
+    public static DokanStatusInfo Check()
     {
         try
         {
@@ -17,23 +26,30 @@ public static class DokanSupport
             var libraryVersion = dokan.Version;
             if (driverVersion <= 0)
             {
-                message = $"Dokan 驱动未安装或未启动（库版本 {libraryVersion}）";
-                return false;
+                return new DokanStatusInfo(false, "dokan.notStarted", [libraryVersion]);
             }
 
-            message = $"Dokan 就绪（库 {FormatVersion(libraryVersion)}，驱动 {FormatVersion(driverVersion)}）";
-            return true;
+            return new DokanStatusInfo(
+                true,
+                "dokan.ready",
+                [FormatVersion(libraryVersion), FormatVersion(driverVersion)]);
         }
         catch (DllNotFoundException)
         {
-            message = "未找到 dokan2.dll，请先安装 Dokan 驱动";
-            return false;
+            return new DokanStatusInfo(false, "dokan.dllMissing", []);
         }
         catch (Exception ex)
         {
-            message = $"Dokan 不可用: {ex.Message}";
-            return false;
+            return new DokanStatusInfo(false, "dokan.unavailable", [ex.Message]);
         }
+    }
+
+    /// <summary>驱动是否可用，并给出当前语言的说明文本。</summary>
+    public static bool IsInstalled(out string message)
+    {
+        var status = Check();
+        message = status.Text;
+        return status.Installed;
     }
 
     private static string FormatVersion(int version) => $"{version / 100}.{(version % 100) / 10}.{version % 10}";

@@ -50,6 +50,9 @@ public sealed class AppConfig
 
     public bool MinimizeToTray { get; set; } = true;
 
+    /// <summary>界面语言："system"（跟随系统）/ "zh-Hans" / "en"。null 等同 system。</summary>
+    public string? Language { get; set; }
+
     /// <summary>目录缓存秒数。</summary>
     public int CacheSeconds { get; set; } = 3;
 

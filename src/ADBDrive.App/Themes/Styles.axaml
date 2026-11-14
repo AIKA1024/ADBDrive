@@ -212,4 +212,81 @@
     <Setter Property="FontSize" Value="12" />
   </Style>
 
+  <!--
+    自定义标题栏的窗口控制按钮。
+    尺寸与 Windows 11 原生一致（46x34），字形用 Segoe MDL2 Assets 的 Caption 字形
+    （E921 最小化 / E922 最大化 / E923 还原 / E8BB 关闭 / E713 设置），
+    悬停态是 10% 白色叠加，关闭按钮悬停为系统红 #C42B1C。
+  -->
+  <Style Selector="Button.caption">
+    <Setter Property="Width" Value="46" />
+    <Setter Property="Height" Value="34" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="Button.caption /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+
+  <Style Selector="Button.caption:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#1FFFFFFF" />
+  </Style>
+
+  <Style Selector="Button.caption:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="#14FFFFFF" />
+  </Style>
+
+  <Style Selector="Button.caption TextBlock">
+    <Setter Property="FontFamily" Value="Segoe MDL2 Assets, Segoe Fluent Icons" />
+    <Setter Property="FontSize" Value="10" />
+    <Setter Property="Foreground" Value="#D3D6DB" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="Button.caption:pointerover TextBlock">
+    <Setter Property="Foreground" Value="#FFFFFF" />
+  </Style>
+
+  <Style Selector="Button.caption.close:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#C42B1C" />
+  </Style>
+
+  <Style Selector="Button.caption.close:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="#B0241A" />
+  </Style>
+
+  <Style Selector="Button.caption.close:pointerover TextBlock">
+    <Setter Property="Foreground" Value="#FFFFFF" />
+  </Style>
+
+  <!--
+    三个窗口控制字形用矢量 Path 画，不用字体：
+    字体走 ClearType 次像素渲染，1px 的横竖线会出现红蓝彩边；原生 DWM 是矢量绘制，没有彩边。
+  -->
+  <Style Selector="Path.captionGlyph">
+    <Setter Property="Width" Value="10" />
+    <Setter Property="Height" Value="10" />
+    <Setter Property="Stretch" Value="None" />
+    <Setter Property="Stroke" Value="#D3D6DB" />
+    <Setter Property="StrokeThickness" Value="1" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Margin" Value="0,-1,0,0" />
+  </Style>
+
+  <Style Selector="Button.caption:pointerover Path.captionGlyph">
+    <Setter Property="Stroke" Value="#FFFFFF" />
+  </Style>
+
+  <Style Selector="Button.caption.close:pointerover Path.captionGlyph">
+    <Setter Property="Stroke" Value="#FFFFFF" />
+  </Style>
+
 </Styles>

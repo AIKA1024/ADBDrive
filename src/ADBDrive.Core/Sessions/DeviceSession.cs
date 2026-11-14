@@ -2,6 +2,7 @@ using ADBDrive.Core.Adb;
 using ADBDrive.Core.Config;
 using ADBDrive.Core.Diagnostics;
 using ADBDrive.Core.FileSystem;
+using ADBDrive.Core.Localization;
 using ADBDrive.Core.Mount;
 
 namespace ADBDrive.Core.Sessions;
@@ -32,7 +33,16 @@ public sealed class DeviceSession : IDisposable
     private CancellationTokenSource? _watchCts;
     private DeviceConfig _config;
     private SessionState _state = SessionState.Disconnected;
-    private string _statusMessage = "未连接";
+
+    /// <summary>
+    /// 状态文案存的是词条 key + 参数，而不是渲染好的字符串：
+    /// 这样切换界面语言后，已有的状态消息也会跟着变成新语言。
+    /// 只有携带原始异常文本时才退回 <see cref="_statusMessage"/>。
+    /// </summary>
+    private string? _statusKey = "session.disconnected";
+    private object?[] _statusArgs = [];
+    private string _statusMessage = string.Empty;
+    private string _identityUid = string.Empty;
     private bool _everConnected;
     private bool _disposed;
 
@@ -64,7 +74,7 @@ public sealed class DeviceSession : IDisposable
         {
             lock (_stateGate)
             {
-                return _statusMessage;
+                return _statusKey is null ? _statusMessage : Loc.F(_statusKey, _statusArgs);
             }
         }
     }
@@ -84,7 +94,9 @@ public sealed class DeviceSession : IDisposable
     public bool IsRoot { get; private set; }
 
     /// <summary>设备侧身份：root / shell / 未知。</summary>
-    public string IdentityText { get; private set; } = "未知";
+    public string IdentityText => IsRoot
+        ? "root"
+        : string.IsNullOrEmpty(_identityUid) ? Loc.T("identity.unknown") : $"uid {_identityUid}";
 
     public string DisplayName
     {
@@ -123,10 +135,10 @@ public sealed class DeviceSession : IDisposable
                 return;
             }
 
-            SetState(SessionState.Connecting, "正在连接…");
+            SetState(SessionState.Connecting, "session.connecting");
             if (!await _server.EnsureServerAsync(ct).ConfigureAwait(false))
             {
-                SetState(SessionState.Error, "adb server 不可用，请检查 adb.exe 路径");
+                SetState(SessionState.Error, "session.serverUnavailable");
                 return;
             }
 
@@ -143,21 +155,21 @@ public sealed class DeviceSession : IDisposable
             var info = await WaitForDeviceAsync(ct, TimeSpan.FromSeconds(8)).ConfigureAwait(false);
             if (info is null)
             {
-                SetState(SessionState.Error, "设备未出现在 adb devices 中");
+                SetState(SessionState.Error, "session.deviceNotFound");
                 StartWatchdog();
                 return;
             }
 
             if (info.State == AdbDeviceState.Unauthorized)
             {
-                SetState(SessionState.Unauthorized, "请在手机上确认「允许 USB 调试」授权");
+                SetState(SessionState.Unauthorized, "session.unauthorized");
                 StartWatchdog();
                 return;
             }
 
             if (!info.IsOnline)
             {
-                SetState(SessionState.Offline, $"设备状态: {AdbServerClient.DescribeState(info.State)}");
+                SetState(SessionState.Offline, "session.deviceState", AdbServerClient.DescribeState(info.State));
                 StartWatchdog();
                 return;
             }
@@ -180,30 +192,30 @@ public sealed class DeviceSession : IDisposable
                 // 配置错误，不是临时故障，不启动看门狗反复重试。
                 var hint = IsRoot
                     ? string.Empty
-                    : "（当前 adbd 非 root，sync 通道只能访问 /sdcard、/storage/emulated/0 等共享目录）";
-                SetState(SessionState.Error, $"根路径不存在或无法访问: {mapper.Root}{hint}");
+                    : Loc.T("session.rootHintNonRoot");
+                SetState(SessionState.Error, "session.rootInaccessible", mapper.Root, hint);
                 return;
             }
 
             Device = device;
             FileSystem = fileSystem;
             _everConnected = true;
-            SetState(SessionState.Connected, $"已连接 · {DisplayName} · {mapper.Root}");
+            SetState(SessionState.Connected, "session.connected", DisplayName, mapper.Root);
             StartWatchdog();
         }
         catch (OperationCanceledException)
         {
-            SetState(SessionState.Error, "连接已取消");
+            SetState(SessionState.Error, "session.cancelled");
         }
         catch (AdbException ex)
         {
-            SetState(SessionState.Error, ex.Message);
+            SetStateRaw(SessionState.Error, ex.Message);
             StartWatchdog();
         }
         catch (Exception ex)
         {
             _log.Error("会话", $"连接 {Endpoint} 失败", ex);
-            SetState(SessionState.Error, ex.Message);
+            SetStateRaw(SessionState.Error, ex.Message);
             StartWatchdog();
         }
         finally
@@ -246,7 +258,7 @@ public sealed class DeviceSession : IDisposable
         {
             var uid = (await device.ExecuteAsync("id -u", ct).ConfigureAwait(false)).Trim();
             IsRoot = uid == "0";
-            IdentityText = IsRoot ? "root" : (string.IsNullOrEmpty(uid) ? "未知" : $"uid {uid}");
+            _identityUid = uid;
             if (IsRoot)
             {
                 _log.Info("会话", $"{Endpoint} 的 adbd 以 root 运行，可挂载全盘");
@@ -255,7 +267,7 @@ public sealed class DeviceSession : IDisposable
         catch (Exception ex)
         {
             IsRoot = false;
-            IdentityText = "未知";
+            _identityUid = string.Empty;
             _log.Debug("会话", $"检测设备身份失败: {ex.Message}");
         }
     }
@@ -298,7 +310,7 @@ public sealed class DeviceSession : IDisposable
             {
                 _config.RootPath = normalized;
                 RaiseChanged();
-                return (true, $"根路径已改为 {normalized}，连接后生效");
+                return (true, Loc.F("session.rootChangedPending", normalized));
             }
 
             var fileSystem = new AdbFileSystem(Device, mapper, _log)
@@ -311,9 +323,9 @@ public sealed class DeviceSession : IDisposable
             if (probe is null)
             {
                 var hint = IsRoot
-                    ? "，该目录不存在或没有读取权限"
-                    : "，该目录需要 root（adb root / Magisk 授权）才能访问";
-                return (false, $"无法访问 {normalized}{hint}");
+                    ? Loc.T("session.rootHintMissing")
+                    : Loc.T("session.rootHintNeedsRoot");
+                return (false, Loc.F("session.cannotAccess", normalized, hint));
             }
 
             var wasMounted = State == SessionState.Mounted;
@@ -329,14 +341,14 @@ public sealed class DeviceSession : IDisposable
 
             if (!wasMounted)
             {
-                SetState(SessionState.Connected, $"已连接 · {DisplayName} · {mapper.Root}");
-                return (true, $"根路径已改为 {normalized}");
+                SetState(SessionState.Connected, "session.connected", DisplayName, mapper.Root);
+                return (true, Loc.F("session.rootChanged", normalized));
             }
 
             try
             {
                 await MountCoreAsync(ct).ConfigureAwait(false);
-                return (true, $"已切换到 {normalized}（{Mount?.DriveLetter}: 已重挂）");
+                return (true, Loc.F("session.rootSwitched", normalized, Mount?.DriveLetter));
             }
             catch (Exception ex)
             {
@@ -352,7 +364,7 @@ public sealed class DeviceSession : IDisposable
                     _log.Error("会话", "回退挂载失败", rollbackEx);
                 }
 
-                return (false, $"切换到 {normalized} 失败：{ex.Message}，已回退");
+                return (false, Loc.F("session.rootSwitchFailed", normalized, ex.Message));
             }
         }
         finally
@@ -385,13 +397,13 @@ public sealed class DeviceSession : IDisposable
 
             if (State != SessionState.Connected || FileSystem is null)
             {
-                throw new InvalidOperationException("设备未连接，无法挂载");
+                throw new InvalidOperationException(Loc.T("session.notConnected"));
             }
 
             var letter = ResolveDriveLetter();
             if (letter is null)
             {
-                throw new InvalidOperationException("没有可用盘符");
+                throw new InvalidOperationException(Loc.T("session.noDriveLetter"));
             }
 
             var label = BuildVolumeLabel();
@@ -405,7 +417,7 @@ public sealed class DeviceSession : IDisposable
                 _config.DriveLetter = letter.Value.ToString();
             }
 
-            SetState(SessionState.Mounted, $"{letter}: · {_config.RootPath}");
+            SetState(SessionState.Mounted, "session.mounted", letter, _config.RootPath);
         }
     }
 
@@ -428,7 +440,7 @@ public sealed class DeviceSession : IDisposable
 
         if (State == SessionState.Mounted)
         {
-            SetState(SessionState.Connected, "已卸载");
+            SetState(SessionState.Connected, "session.unmounted");
         }
     }
 
@@ -447,7 +459,7 @@ public sealed class DeviceSession : IDisposable
                 await _server.DisconnectAsync(Endpoint, CancellationToken.None).ConfigureAwait(false);
             }
 
-            SetState(SessionState.Disconnected, "未连接");
+            SetState(SessionState.Disconnected, "session.disconnected");
         }
         finally
         {
@@ -494,21 +506,62 @@ public sealed class DeviceSession : IDisposable
         return string.IsNullOrWhiteSpace(name) ? "ADBDrive" : name;
     }
 
-    private void SetState(SessionState state, string message)
+    /// <summary>设置状态，文案用词条 key —— 读取时才渲染，所以切换语言后会跟着变。</summary>
+    private void SetState(SessionState state, string key, params object?[] args)
     {
         lock (_stateGate)
         {
-            if (_state == state && _statusMessage == message)
+            if (_state == state && string.Equals(_statusKey, key, StringComparison.Ordinal) && ArgsEqual(_statusArgs, args))
             {
                 return;
             }
 
             _state = state;
+            _statusKey = key;
+            _statusArgs = args;
+            _statusMessage = string.Empty;
+        }
+
+        _log.Info("会话", $"{Endpoint} => {state}: {StatusMessage}");
+        RaiseChanged();
+    }
+
+    /// <summary>设置状态，文案是外部原始文本（例如设备返回的异常信息，无法本地化）。</summary>
+    private void SetStateRaw(SessionState state, string message)
+    {
+        lock (_stateGate)
+        {
+            if (_state == state && _statusKey is null && string.Equals(_statusMessage, message, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _state = state;
+            _statusKey = null;
+            _statusArgs = [];
             _statusMessage = message;
         }
 
         _log.Info("会话", $"{Endpoint} => {state}: {message}");
         RaiseChanged();
+    }
+
+    private static bool ArgsEqual(object?[] left, object?[] right)
+    {
+        if (left.Length != right.Length)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < left.Length; i++)
+        {
+            if (!Equals(left[i], right[i]))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private void RaiseChanged()
@@ -563,7 +616,7 @@ public sealed class DeviceSession : IDisposable
                     if (!await ProbeAsync(ct).ConfigureAwait(false))
                     {
                         FileSystem?.InvalidateAll();
-                        SetState(SessionState.Offline, "设备已离线，正在尝试重连…");
+                        SetState(SessionState.Offline, "session.offlineReconnecting");
                     }
                     else
                     {
@@ -624,7 +677,7 @@ public sealed class DeviceSession : IDisposable
         Device?.RefreshInfo(info);
         if (info.State == AdbDeviceState.Unauthorized)
         {
-            SetState(SessionState.Unauthorized, "授权被撤销，请在手机上重新确认");
+            SetState(SessionState.Unauthorized, "session.authorizationRevoked");
             return false;
         }
 
@@ -635,11 +688,11 @@ public sealed class DeviceSession : IDisposable
 
         if (State == SessionState.Mounted)
         {
-            SetState(SessionState.Mounted, $"{Mount?.DriveLetter}: · {_config.RootPath}");
+            SetState(SessionState.Mounted, "session.mounted", Mount?.DriveLetter, _config.RootPath);
         }
         else
         {
-            SetState(SessionState.Connected, $"已连接 · {DisplayName} · {_config.RootPath}");
+            SetState(SessionState.Connected, "session.connected", DisplayName, _config.RootPath);
         }
 
         return true;
@@ -661,19 +714,19 @@ public sealed class DeviceSession : IDisposable
         var info = await WaitForDeviceAsync(ct, TimeSpan.FromSeconds(4)).ConfigureAwait(false);
         if (info is null)
         {
-            SetState(SessionState.Offline, "设备离线，重试中…");
+            SetState(SessionState.Offline, "session.offlineRetrying");
             return false;
         }
 
         if (info.State == AdbDeviceState.Unauthorized)
         {
-            SetState(SessionState.Unauthorized, "请在手机上确认授权");
+            SetState(SessionState.Unauthorized, "session.confirmAuthorization");
             return false;
         }
 
         if (!info.IsOnline)
         {
-            SetState(SessionState.Offline, "设备离线，重试中…");
+            SetState(SessionState.Offline, "session.offlineRetrying");
             return false;
         }
 
@@ -695,8 +748,15 @@ public sealed class DeviceSession : IDisposable
         }
 
         var mounted = Mount is not null;
-        SetState(mounted ? SessionState.Mounted : SessionState.Connected,
-            mounted ? $"已恢复连接 · {Mount!.DriveLetter}:" : $"已重连 · {DisplayName}");
+        if (mounted)
+        {
+            SetState(SessionState.Mounted, "session.restored", Mount!.DriveLetter);
+        }
+        else
+        {
+            SetState(SessionState.Connected, "session.reconnected", DisplayName);
+        }
+
         return true;
     }
 

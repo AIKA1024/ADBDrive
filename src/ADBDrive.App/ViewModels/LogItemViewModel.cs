@@ -1,4 +1,7 @@
+using System.ComponentModel;
+using ADBDrive.Core.Adb;
 using ADBDrive.Core.Diagnostics;
+using ADBDrive.Core.Localization;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.Input;
 
@@ -47,13 +50,15 @@ public sealed class LogItemViewModel
 }
 
 /// <summary>adb devices 里发现但尚未保存的设备。</summary>
-public sealed class DiscoveredDeviceViewModel
+public sealed class DiscoveredDeviceViewModel : INotifyPropertyChanged
 {
-    public DiscoveredDeviceViewModel(string serial, string name, string stateText, bool isOnline, bool isSaved)
+    private readonly AdbDeviceState _state;
+
+    public DiscoveredDeviceViewModel(string serial, string name, AdbDeviceState state, bool isOnline, bool isSaved)
     {
         Serial = serial;
         Name = name;
-        StateText = stateText;
+        _state = state;
         IsOnline = isOnline;
         IsSaved = isSaved;
     }
@@ -62,7 +67,8 @@ public sealed class DiscoveredDeviceViewModel
 
     public string Name { get; }
 
-    public string StateText { get; }
+    /// <summary>状态文字按当前语言渲染（切换语言后调用 <see cref="Refresh"/>）。</summary>
+    public string StateText => AdbServerClient.DescribeState(_state);
 
     public bool IsOnline { get; }
 
@@ -72,5 +78,9 @@ public sealed class DiscoveredDeviceViewModel
 
     public string Display => string.Equals(Name, Serial, StringComparison.Ordinal) ? Serial : $"{Name} · {Serial}";
 
-    public string ActionText => IsSaved ? "连接" : "挂载";
+    public string ActionText => IsSaved ? Loc.T("device.connect") : Loc.T("device.mount");
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public void Refresh() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
 }

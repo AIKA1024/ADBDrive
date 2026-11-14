@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Platform;
 using ADBDrive.Core.Diagnostics;
+using ADBDrive.Core.Localization;
 using ADBDrive.Views;
 
 namespace ADBDrive.Services;
@@ -13,6 +14,9 @@ public sealed class TrayService : IDisposable
     private TrayIcon? _trayIcon;
     private TrayIcons? _icons;
     private MainWindow? _window;
+    private NativeMenuItem? _showItem;
+    private NativeMenuItem? _hideItem;
+    private NativeMenuItem? _exitItem;
     private bool _disposed;
 
     public TrayService(AppLog? log = null) => _log = log;
@@ -26,24 +30,24 @@ public sealed class TrayService : IDisposable
         _window = window;
 
         var menu = new NativeMenu();
-        var showItem = new NativeMenuItem("显示主窗口");
-        showItem.Click += (_, _) => ShowWindow();
-        menu.Items.Add(showItem);
+        _showItem = new NativeMenuItem(Loc.T("tray.show"));
+        _showItem.Click += (_, _) => ShowWindow();
+        menu.Items.Add(_showItem);
 
-        var hideItem = new NativeMenuItem("隐藏到托盘");
-        hideItem.Click += (_, _) => HideWindow();
-        menu.Items.Add(hideItem);
+        _hideItem = new NativeMenuItem(Loc.T("tray.hide"));
+        _hideItem.Click += (_, _) => HideWindow();
+        menu.Items.Add(_hideItem);
 
         menu.Items.Add(new NativeMenuItemSeparator());
 
-        var exitItem = new NativeMenuItem("退出 ADBDrive");
-        exitItem.Click += (_, _) => ExitRequested?.Invoke();
-        menu.Items.Add(exitItem);
+        _exitItem = new NativeMenuItem(Loc.T("tray.exit"));
+        _exitItem.Click += (_, _) => ExitRequested?.Invoke();
+        menu.Items.Add(_exitItem);
 
         _trayIcon = new TrayIcon
         {
             Icon = LoadIcon(),
-            ToolTipText = "ADBDrive · 远程 ADB 磁盘",
+            ToolTipText = Loc.T("app.title"),
             Menu = menu,
         };
         _trayIcon.Clicked += (_, _) => ShowWindow();
@@ -64,6 +68,8 @@ public sealed class TrayService : IDisposable
         // 注册后 Attach() 会读取上述属性并创建平台图标，此时再显式置可见。
         _trayIcon.IsVisible = true;
 
+        Loc.Changed += RefreshTexts;
+
         if (_trayIcon.NativeMenuExporter is null)
         {
             _log?.Warn("托盘", "托盘图标未在平台层注册成功（NativeMenuExporter 为空）");
@@ -71,6 +77,30 @@ public sealed class TrayService : IDisposable
         else
         {
             _log?.Info("托盘", $"托盘图标已注册：{_trayIcon.ToolTipText}");
+        }
+    }
+
+    /// <summary>切换语言后刷新托盘菜单与悬停文本（原地改 Header，保持同一个原生菜单对象）。</summary>
+    private void RefreshTexts()
+    {
+        if (_showItem is not null)
+        {
+            _showItem.Header = Loc.T("tray.show");
+        }
+
+        if (_hideItem is not null)
+        {
+            _hideItem.Header = Loc.T("tray.hide");
+        }
+
+        if (_exitItem is not null)
+        {
+            _exitItem.Header = Loc.T("tray.exit");
+        }
+
+        if (_trayIcon is not null)
+        {
+            _trayIcon.ToolTipText = Loc.T("app.title");
         }
     }
 
@@ -108,6 +138,7 @@ public sealed class TrayService : IDisposable
         }
 
         _disposed = true;
+        Loc.Changed -= RefreshTexts;
 
         try
         {

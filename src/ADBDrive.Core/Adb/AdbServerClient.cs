@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net.Sockets;
 using System.Text;
 using ADBDrive.Core.Diagnostics;
+using ADBDrive.Core.Localization;
 
 namespace ADBDrive.Core.Adb;
 
@@ -329,14 +330,14 @@ public sealed class AdbServerClient
 
     public static string DescribeState(AdbDeviceState state) => state switch
     {
-        AdbDeviceState.Device => "在线",
-        AdbDeviceState.Offline => "离线",
-        AdbDeviceState.Unauthorized => "未授权",
-        AdbDeviceState.Recovery => "Recovery",
-        AdbDeviceState.Bootloader => "Bootloader",
-        AdbDeviceState.Sideload => "Sideload",
-        AdbDeviceState.NoPermissions => "无权限",
-        _ => "未知",
+        AdbDeviceState.Device => Loc.T("adbState.online"),
+        AdbDeviceState.Offline => Loc.T("adbState.offline"),
+        AdbDeviceState.Unauthorized => Loc.T("adbState.unauthorized"),
+        AdbDeviceState.Recovery => Loc.T("adbState.recovery"),
+        AdbDeviceState.Bootloader => Loc.T("adbState.bootloader"),
+        AdbDeviceState.Sideload => Loc.T("adbState.sideload"),
+        AdbDeviceState.NoPermissions => Loc.T("adbState.noPermissions"),
+        _ => Loc.T("adbState.unknown"),
     };
 
     internal static string Escape(string value) => value.Replace("\r", " ").Replace("\n", " ");
