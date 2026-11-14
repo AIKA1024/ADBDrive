@@ -26,7 +26,7 @@ public partial class App : Application
     public override void OnFrameworkInitializationCompleted()
     {
         Host = new AppHost();
-        Tray = new TrayService();
+        Tray = new TrayService(Host.Log);
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

@@ -1,5 +1,7 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Platform;
+using ADBDrive.Core.Diagnostics;
 using ADBDrive.Views;
 
 namespace ADBDrive.Services;
@@ -7,9 +9,13 @@ namespace ADBDrive.Services;
 /// <summary>系统托盘图标与菜单。</summary>
 public sealed class TrayService : IDisposable
 {
+    private readonly AppLog? _log;
     private TrayIcon? _trayIcon;
+    private TrayIcons? _icons;
     private MainWindow? _window;
     private bool _disposed;
+
+    public TrayService(AppLog? log = null) => _log = log;
 
     public bool IsExiting { get; private set; }
 
@@ -18,7 +24,6 @@ public sealed class TrayService : IDisposable
     public void Attach(MainWindow window)
     {
         _window = window;
-        var icon = LoadIcon();
 
         var menu = new NativeMenu();
         var showItem = new NativeMenuItem("显示主窗口");
@@ -37,12 +42,36 @@ public sealed class TrayService : IDisposable
 
         _trayIcon = new TrayIcon
         {
-            Icon = icon,
+            Icon = LoadIcon(),
             ToolTipText = "ADBDrive · 远程 ADB 磁盘",
             Menu = menu,
-            IsVisible = true,
         };
         _trayIcon.Clicked += (_, _) => ShowWindow();
+
+        // Avalonia 12 起 TrayIcon 只是普通对象：必须注册到 Application 的附加属性
+        // TrayIcon.Icons 上，平台层才会真正创建托盘图标（Win32 下是 Shell_NotifyIcon）。
+        // 只 new 出来再设 IsVisible 是**静默无效**的 —— 本程序踩过这个坑。
+        var app = Application.Current;
+        if (app is null)
+        {
+            _log?.Warn("托盘", "Application.Current 为空，无法注册托盘图标");
+            return;
+        }
+
+        _icons = new TrayIcons { _trayIcon };
+        TrayIcon.SetIcons(app, _icons);
+
+        // 注册后 Attach() 会读取上述属性并创建平台图标，此时再显式置可见。
+        _trayIcon.IsVisible = true;
+
+        if (_trayIcon.NativeMenuExporter is null)
+        {
+            _log?.Warn("托盘", "托盘图标未在平台层注册成功（NativeMenuExporter 为空）");
+        }
+        else
+        {
+            _log?.Info("托盘", $"托盘图标已注册：{_trayIcon.ToolTipText}");
+        }
     }
 
     public void ShowWindow()
@@ -79,7 +108,30 @@ public sealed class TrayService : IDisposable
         }
 
         _disposed = true;
-        _trayIcon?.Dispose();
+
+        try
+        {
+            _trayIcon?.Dispose();
+        }
+        catch
+        {
+            // 退出路径，忽略
+        }
+
         _trayIcon = null;
+
+        if (_icons is not null && Application.Current is { } app)
+        {
+            try
+            {
+                TrayIcon.SetIcons(app, null);
+            }
+            catch
+            {
+                // 退出路径，忽略
+            }
+        }
+
+        _icons = null;
     }
 }
