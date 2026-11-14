@@ -113,6 +113,14 @@ internal static class StringTables
         ["logs.level.all"] = "全部",
         ["logs.level.warn"] = "仅警告",
         ["logs.level.error"] = "仅错误",
+        ["logs.searchPlaceholder"] = "搜索日志",
+        ["logs.searchClear"] = "清除搜索",
+        ["logs.searchCount"] = "命中 {0} / 共 {1} 条",
+        ["logs.noMatch"] = "没有匹配的日志",
+        ["logs.copyLine"] = "复制此行",
+        ["logs.copyAll"] = "复制全部",
+        ["logs.copied"] = "已复制 {0} 行",
+        ["logs.copied.one"] = "已复制 1 行",
 
         // ===== 盘符 =====
         ["drive.auto"] = "自动",
@@ -287,6 +295,14 @@ internal static class StringTables
         ["logs.level.all"] = "Everything",
         ["logs.level.warn"] = "Warnings only",
         ["logs.level.error"] = "Errors only",
+        ["logs.searchPlaceholder"] = "Search log",
+        ["logs.searchClear"] = "Clear search",
+        ["logs.searchCount"] = "{0} of {1} matching",
+        ["logs.noMatch"] = "No matching entries",
+        ["logs.copyLine"] = "Copy this line",
+        ["logs.copyAll"] = "Copy all",
+        ["logs.copied"] = "Copied {0} lines",
+        ["logs.copied.one"] = "Copied 1 line",
 
         // ===== drive letters =====
         ["drive.auto"] = "Auto",

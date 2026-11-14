@@ -47,6 +47,13 @@ public sealed class LogItemViewModel
     public IBrush LevelBrush { get; }
 
     public string Tooltip => $"{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{LevelText}] {Category}";
+
+    /// <summary>复制到剪贴板时的整行文本（带完整时间戳）。</summary>
+    public string ToLine()
+    {
+        var category = string.IsNullOrWhiteSpace(Category) ? string.Empty : Category + ": ";
+        return $"{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{LevelText}] {category}{Message}";
+    }
 }
 
 /// <summary>adb devices 里发现但尚未保存的设备。</summary>

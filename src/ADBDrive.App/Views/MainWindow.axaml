@@ -369,31 +369,57 @@
                 </DataTemplate>
               </ComboBox.ItemTemplate>
             </ComboBox>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="2">
+              <TextBox Width="186" MinHeight="26" FontSize="11.5" Padding="8,2"
+                       VerticalContentAlignment="Center"
+                       Text="{Binding LogSearch, Mode=TwoWay}"
+                       PlaceholderText="{loc:Tr logs.searchPlaceholder}" />
+              <Button Grid.Column="1" Width="24" MinHeight="26" Padding="0" Classes="ghost"
+                      FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="9"
+                      Content="&#xE711;" ToolTip.Tip="{loc:Tr logs.searchClear}"
+                      Command="{Binding ClearLogSearchCommand}"
+                      IsVisible="{Binding LogSearch, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            </Grid>
           </StackPanel>
-          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
-            <Button Classes="ghost" Content="{loc:Tr logs.openFolder}" FontSize="11.5" Command="{Binding OpenLogFolderCommand}" />
+          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+            <TextBlock Classes="tiny" Text="{Binding CopyHint}" Foreground="#4ADE80" VerticalAlignment="Center"
+                       Margin="0,0,4,0"
+                       IsVisible="{Binding CopyHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
             <Button Classes="ghost" Content="{loc:Tr logs.clear}" FontSize="11.5" Command="{Binding ClearLogsCommand}" />
+            <Button Classes="ghost" Content="{loc:Tr logs.openFolder}" FontSize="11.5" Command="{Binding OpenLogFolderCommand}" />
             <Button Classes="ghost" Content="{loc:Tr logs.toggle}" FontSize="11.5" Command="{Binding ToggleLogCommand}" />
           </StackPanel>
         </Grid>
 
         <Border Grid.Row="1" IsVisible="{Binding IsLogVisible}" Height="132" Margin="0,8,0,0"
                 Background="#141518" CornerRadius="8" Padding="10,8">
-          <ScrollViewer Name="LogScroll" VerticalScrollBarVisibility="Auto">
-            <ItemsControl ItemsSource="{Binding Logs}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:LogItemViewModel">
-                  <Grid ColumnDefinitions="Auto,Auto,*" Margin="0,0,0,1">
-                    <TextBlock Classes="mono" Text="{Binding Time}" Foreground="#5A616B" />
-                    <TextBlock Grid.Column="1" Classes="mono" Text="{Binding LevelText}"
-                               Foreground="{Binding LevelBrush}" Margin="8,0" />
-                    <TextBlock Grid.Column="2" Classes="mono" Text="{Binding Message}"
-                               TextWrapping="Wrap" Foreground="#C3C8D0" />
-                  </Grid>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </ScrollViewer>
+          <Grid>
+            <ScrollViewer Name="LogScroll" VerticalScrollBarVisibility="Auto">
+              <ItemsControl ItemsSource="{Binding Logs}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:LogItemViewModel">
+                    <Grid ColumnDefinitions="Auto,Auto,*" Margin="0,0,0,1">
+                      <Grid.ContextFlyout>
+                        <MenuFlyout>
+                          <MenuItem Header="{loc:Tr logs.copyLine}" Click="OnCopyLogLineClick" />
+                          <MenuItem Header="{loc:Tr logs.copyAll}" Click="OnCopyLogsClick" />
+                        </MenuFlyout>
+                      </Grid.ContextFlyout>
+                      <TextBlock Classes="mono" Text="{Binding Time}" Foreground="#5A616B" />
+                      <TextBlock Grid.Column="1" Classes="mono" Text="{Binding LevelText}"
+                                 Foreground="{Binding LevelBrush}" Margin="8,0" />
+                      <!-- 可选中的文本：拖选后 Ctrl+C 就能复制这一段 -->
+                      <SelectableTextBlock Grid.Column="2" Text="{Binding Message}"
+                                           FontFamily="Cascadia Mono, Consolas, monospace" FontSize="11.5"
+                                           TextWrapping="Wrap" Foreground="#C3C8D0" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+            <TextBlock Text="{loc:Tr logs.noMatch}" Classes="tiny" IsVisible="{Binding LogEmptyVisible}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Grid>
         </Border>
       </Grid>
     </Border>

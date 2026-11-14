@@ -30,6 +30,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private readonly List<LogEntry> _logBuffer = [];
     private bool _refreshing;
+    private int _copyHintToken;
 
     [ObservableProperty]
     private string _adbStatus = string.Empty;
@@ -70,6 +71,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isLogVisible = true;
+
+    /// <summary>日志搜索词（按消息 / 分类 / 级别过滤，空表示不过滤）。</summary>
+    [ObservableProperty]
+    private string _logSearch = string.Empty;
+
+    /// <summary>复制成功后的短暂提示。</summary>
+    [ObservableProperty]
+    private string? _copyHint;
+
+    /// <summary>搜索无结果时显示的空状态。</summary>
+    [ObservableProperty]
+    private bool _logEmptyVisible;
 
     [ObservableProperty]
     private string _deviceCountText = string.Empty;
@@ -155,8 +168,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public string ConfigDirectoryText => Path.GetDirectoryName(ConfigPathText) ?? ConfigPathText;
 
-    /// <summary>日志条数（"12 条" / "12 entries"）。</summary>
-    public string LogCountText => Loc.Count("logs.count", Logs.Count);
+    /// <summary>日志条数；有搜索词时显示「命中 / 总数」。</summary>
+    public string LogCountText
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(LogSearch))
+            {
+                return Loc.Count("logs.count", Logs.Count);
+            }
+
+            return Loc.F("logs.searchCount", Logs.Count, _logBuffer.Count(PassesLevel));
+        }
+    }
 
     public string VersionText =>
         "ADBDrive v" + (typeof(MainWindowViewModel).Assembly.GetName().Version?.ToString(3) ?? "1.0.0")
@@ -211,6 +235,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(NewDrive));
 
         OnPropertyChanged(nameof(LogCountText));
+        CopyHint = null;
 
         UpdateStatusChips();
         RefreshSessions();
@@ -369,6 +394,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         OnPropertyChanged(nameof(LogCountText));
+        LogEmptyVisible = Logs.Count == 0 && !string.IsNullOrWhiteSpace(LogSearch);
         LogAdded?.Invoke();
     }
 
@@ -383,16 +409,56 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         OnPropertyChanged(nameof(LogCountText));
+        LogEmptyVisible = Logs.Count == 0 && !string.IsNullOrWhiteSpace(LogSearch);
         LogAdded?.Invoke();
     }
 
-    private bool PassesFilter(LogEntry entry) => SelectedLogLevel?.Value switch
+    private bool PassesLevel(LogEntry entry) => SelectedLogLevel?.Value switch
     {
         LogLevelFilter.All => true,
         LogLevelFilter.Warnings => entry.Level >= LogLevel.Warn,
         LogLevelFilter.Errors => entry.Level >= LogLevel.Error,
         _ => entry.Level >= LogLevel.Info,
     };
+
+    private bool PassesFilter(LogEntry entry)
+    {
+        if (!PassesLevel(entry))
+        {
+            return false;
+        }
+
+        var term = LogSearch?.Trim();
+        if (string.IsNullOrEmpty(term))
+        {
+            return true;
+        }
+
+        return entry.Message.Contains(term, StringComparison.OrdinalIgnoreCase)
+            || entry.Category.Contains(term, StringComparison.OrdinalIgnoreCase)
+            || entry.Level.ToString().Contains(term, StringComparison.OrdinalIgnoreCase);
+    }
+
+    partial void OnLogSearchChanged(string value) => RebuildLogs();
+
+    /// <summary>把当前显示的日志拼成文本（给「复制」按钮用）。</summary>
+    public string BuildLogText() => string.Join(Environment.NewLine, Logs.Select(item => item.ToLine()));
+
+    /// <summary>复制成功后闪一下提示。</summary>
+    public void ShowCopiedHint(int lines)
+    {
+        CopyHint = Loc.Count("logs.copied", lines);
+        var token = ++_copyHintToken;
+        DispatcherTimer.RunOnce(
+            () =>
+            {
+                if (token == _copyHintToken)
+                {
+                    CopyHint = null;
+                }
+            },
+            TimeSpan.FromSeconds(2));
+    }
 
     [RelayCommand]
     private async Task RefreshAsync()
@@ -570,11 +636,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void ClearLogSearch() => LogSearch = string.Empty;
+
+    [RelayCommand]
     private void ClearLogs()
     {
         _logBuffer.Clear();
         Logs.Clear();
+        LogSearch = string.Empty;
         OnPropertyChanged(nameof(LogCountText));
+        LogEmptyVisible = false;
     }
 
     [RelayCommand]

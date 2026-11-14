@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -98,6 +99,53 @@ public partial class MainWindow : Window
         if (_viewModel is not null)
         {
             _viewModel.LogAdded += OnLogAdded;
+        }
+    }
+
+    // ===== 日志复制 =====
+
+    private async void OnCopyLogLineClick(object? sender, RoutedEventArgs e)
+    {
+        // Flyout 的 DataContext 继承自所属的日志行。
+        if (sender is MenuItem { DataContext: LogItemViewModel item })
+        {
+            await CopyTextAsync(item.ToLine(), 1);
+        }
+    }
+
+    private async void OnCopyLogsClick(object? sender, RoutedEventArgs e) => await CopyLogsAsync();
+
+    private async Task CopyLogsAsync()
+    {
+        if (_viewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        var text = viewModel.BuildLogText();
+        if (string.IsNullOrEmpty(text))
+        {
+            return;
+        }
+
+        await CopyTextAsync(text, viewModel.Logs.Count);
+    }
+
+    private async Task CopyTextAsync(string text, int lines)
+    {
+        if (Clipboard is not { } clipboard)
+        {
+            return;
+        }
+
+        try
+        {
+            await clipboard.SetTextAsync(text);
+            _viewModel?.ShowCopiedHint(lines);
+        }
+        catch (Exception ex)
+        {
+            App.Host.Log.Warn("界面", $"复制到剪贴板失败: {ex.Message}");
         }
     }
 
