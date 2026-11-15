@@ -25,6 +25,18 @@ public sealed partial class DeviceViewModel : ObservableObject
     [ObservableProperty]
     private string? _errorMessage;
 
+    /// <summary>是否正在行内编辑挂载根。</summary>
+    [ObservableProperty]
+    private bool _isEditingRoot;
+
+    /// <summary>编辑中的挂载根草稿（确定后才写回，避免每敲一个字就重挂）。</summary>
+    [ObservableProperty]
+    private string _rootDraft = string.Empty;
+
+    /// <summary>编辑中的备注草稿（留空表示不用备注，显示时会退回机型名）。</summary>
+    [ObservableProperty]
+    private string _nameDraft = string.Empty;
+
     public DriveOption? SelectedDriveLetter
     {
         get
@@ -47,6 +59,7 @@ public sealed partial class DeviceViewModel : ObservableObject
             }
 
             _session.Config.DriveLetter = value.Letter?.ToString();
+            SyncDriveSelection();
             OnPropertyChanged();
             _ = _afterAction();
         }
@@ -57,15 +70,40 @@ public sealed partial class DeviceViewModel : ObservableObject
         _session = session;
         _afterAction = afterAction;
         DriveLetterOptions = DriveOption.CreateAll();
+        foreach (var option in DriveLetterOptions)
+        {
+            // 右键菜单直接绑每一项自己的命令，省掉相对源绑定。
+            option.SelectCommand = SelectDriveCommand;
+        }
+
+        SyncDriveSelection();
     }
 
     public DeviceSession Session => _session;
 
     public ObservableCollection<DriveOption> DriveLetterOptions { get; }
 
+    /// <summary>显示名：备注 → 机型名 → 端点，只显示一个。</summary>
     public string Name => _session.DisplayName;
 
     public string Endpoint => _session.Endpoint;
+
+    /// <summary>悬停提示：把被顶掉的机型名和端点补全，方便核对是哪台机器。</summary>
+    public string NameTooltip
+    {
+        get
+        {
+            var model = _session.ModelName;
+            if (string.IsNullOrEmpty(model) || string.Equals(model, Name, StringComparison.OrdinalIgnoreCase))
+            {
+                return Endpoint;
+            }
+
+            return string.Equals(model, Endpoint, StringComparison.OrdinalIgnoreCase)
+                ? Endpoint
+                : $"{model} · {Endpoint}";
+        }
+    }
 
     /// <summary>挂载根路径。修改后立刻切到新的设备目录（需先卸载盘符）。</summary>
     public string RootPath
@@ -131,6 +169,74 @@ public sealed partial class DeviceViewModel : ObservableObject
     public bool IsRootIdentity => _session.IsRoot;
 
     public string IdentityText => _session.IdentityText;
+
+    private void SyncDriveSelection()
+    {
+        var current = SelectedDriveLetter;
+        foreach (var option in DriveLetterOptions)
+        {
+            option.IsSelected = ReferenceEquals(option, current);
+        }
+    }
+
+    [RelayCommand]
+    private void SelectDrive(DriveOption? option)
+    {
+        if (option is not null)
+        {
+            SelectedDriveLetter = option;
+        }
+    }
+
+    /// <summary>右键行：展开 / 收起设备设置（收起时丢弃草稿）。</summary>
+    [RelayCommand]
+    private void ToggleSettings()
+    {
+        if (IsEditingRoot)
+        {
+            CancelSettings();
+            return;
+        }
+
+        BeginEditSettings();
+    }
+
+    /// <summary>进入行内设备设置（备注 + 盘符 + 挂载根）。</summary>
+    [RelayCommand]
+    private void BeginEditSettings()
+    {
+        RootDraft = RootPath;
+        NameDraft = _session.Config.DisplayName ?? string.Empty;
+        ErrorMessage = null;
+        IsEditingRoot = true;
+    }
+
+    /// <summary>应用草稿：备注即时生效，挂载根变了才走「卸载 → 改根 → 重挂」。</summary>
+    [RelayCommand]
+    private void ApplySettings()
+    {
+        IsEditingRoot = false;
+
+        var name = NameDraft.Trim();
+        var normalized = string.IsNullOrEmpty(name) ? null : name;
+        if (!string.Equals(normalized, _session.Config.DisplayName, StringComparison.Ordinal))
+        {
+            _session.Config.DisplayName = normalized;
+            NameDraft = name;
+            OnPropertyChanged(nameof(Name));
+            _ = _afterAction();
+        }
+
+        RootPath = RootDraft;
+    }
+
+    [RelayCommand]
+    private void CancelSettings()
+    {
+        IsEditingRoot = false;
+        RootDraft = RootPath;
+        NameDraft = _session.Config.DisplayName ?? string.Empty;
+    }
 
     /// <summary>点击预设路径（来自根路径旁的下拉菜单）。</summary>
     [RelayCommand]
@@ -206,10 +312,24 @@ public sealed partial class DeviceViewModel : ObservableObject
 
     public bool CanOpenDrive => IsMounted;
 
-    /// <summary>身份信息（root / uid）；自动连接那两个开关单独用 CheckBox 展示。</summary>
-    public string SubtitleText => _session.State is SessionState.Connected or SessionState.Mounted
-        ? Loc.F("device.identity", _session.IdentityText)
-        : Loc.T("sessionState.disconnected");
+    /// <summary>身份信息（root / uid）。</summary>
+    public string SubtitleText => Loc.F("device.identity", _session.IdentityText);
+
+    /// <summary>单行卡片右侧那句补充信息：已连接时是挂载根，否则是状态说明。</summary>
+    public string DetailText
+    {
+        get
+        {
+            if (_session.State is SessionState.Connected or SessionState.Mounted)
+            {
+                return RootPath;
+            }
+
+            // 状态词和左边那列一样时留空，避免出现「未连接 未连接」。
+            var status = StatusText;
+            return string.Equals(status, StateText, StringComparison.Ordinal) ? string.Empty : status;
+        }
+    }
 
     public void Refresh()
     {
@@ -219,6 +339,7 @@ public sealed partial class DeviceViewModel : ObservableObject
             option.Refresh();
         }
 
+        SyncDriveSelection();
         OnPropertyChanged(string.Empty);
     }
 

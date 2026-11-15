@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Windows.Input;
 using ADBDrive.Core.Localization;
 using ADBDrive.Core.Mount;
 
@@ -20,6 +21,8 @@ public enum LogLevelFilter
 /// </summary>
 public sealed class DriveOption : INotifyPropertyChanged
 {
+    private bool _isSelected;
+
     public DriveOption(char? letter) => Letter = letter;
 
     /// <summary>盘符；null 表示自动分配。</summary>
@@ -28,6 +31,25 @@ public sealed class DriveOption : INotifyPropertyChanged
     public bool IsAuto => Letter is null;
 
     public string Label => Letter is null ? Loc.T("drive.auto") : $"{Letter}:";
+
+    /// <summary>是不是当前选中的盘符（右键菜单里打勾）。</summary>
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected == value)
+            {
+                return;
+            }
+
+            _isSelected = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
+        }
+    }
+
+    /// <summary>选中自己；由所属的设备视图模型注入，菜单项直接绑这个命令。</summary>
+    public ICommand? SelectCommand { get; set; }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

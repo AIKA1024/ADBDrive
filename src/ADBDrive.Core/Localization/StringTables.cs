@@ -80,6 +80,15 @@ internal static class StringTables
         ["device.disconnect"] = "断开",
         ["device.remove"] = "从列表移除",
         ["device.preferredDrive"] = "首选盘符",
+        ["device.more"] = "更多操作",
+        ["device.openDrive"] = "打开盘符",
+        ["device.settings"] = "设备设置",
+        ["device.nameLabel"] = "备注",
+        ["device.namePlaceholder"] = "可选，留空则显示机型名",
+        ["device.letterLabel"] = "盘符",
+        ["device.notMounted"] = "未挂载 · 点击设备行可打开设置",
+        ["device.apply"] = "应用",
+        ["device.cancel"] = "取消",
         ["device.identity"] = "身份 {0}",
 
         // ===== 常用挂载根 =====
@@ -262,6 +271,15 @@ internal static class StringTables
         ["device.disconnect"] = "Disconnect",
         ["device.remove"] = "Remove from list",
         ["device.preferredDrive"] = "Preferred drive letter",
+        ["device.more"] = "More actions",
+        ["device.openDrive"] = "Open drive",
+        ["device.settings"] = "Device settings",
+        ["device.nameLabel"] = "Name",
+        ["device.namePlaceholder"] = "Optional; falls back to the model name",
+        ["device.letterLabel"] = "Drive letter",
+        ["device.notMounted"] = "Not mounted · click the row to open settings",
+        ["device.apply"] = "Apply",
+        ["device.cancel"] = "Cancel",
         ["device.identity"] = "Identity {0}",
 
         // ===== mount root presets =====

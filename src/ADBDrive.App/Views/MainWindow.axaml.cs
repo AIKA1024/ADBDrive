@@ -50,6 +50,48 @@ public partial class MainWindow : Window
 
     private void OnMinimizeClick(object? sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
 
+    // ===== 设备行 =====
+
+    /// <summary>
+    /// 行尾的「⋯」打开和设备右键完全相同的菜单 —— 菜单本身挂在 Border 上，
+    /// 这样两处共用一份实例，也保证 DataContext 来自设备行。
+    /// </summary>
+    /// <summary>设备行左键 = 展开 / 收起这一行的设备设置（⋯ 里仍是完整操作菜单）。</summary>
+    private void OnDeviceRowPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is not Border row || !e.GetCurrentPoint(row).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
+        if (IsInsideRowWidget(e.Source as Visual, row) || row.DataContext is not DeviceViewModel device)
+        {
+            return;
+        }
+
+        device.ToggleSettingsCommand.Execute(null);
+        e.Handled = true;
+    }
+
+    /// <summary>
+    /// 只有点在「行的空白/文字」上才切换设置：按钮、输入框、以及已经展开的设置面板
+    /// 都要放行，否则点输入框想改内容时会顺手把面板收起来。
+    /// </summary>
+    private static bool IsInsideRowWidget(Visual? source, Visual row)
+    {
+        for (var visual = source; visual is not null && visual != row; visual = visual.GetVisualParent())
+        {
+            if (visual is Button or TextBox or ComboBox or Control { Name: "SettingsArea" })
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+
+
     private void OnMaximizeClick(object? sender, RoutedEventArgs e) =>
         WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
 

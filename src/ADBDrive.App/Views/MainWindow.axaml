@@ -158,102 +158,148 @@
               <ItemsControl ItemsSource="{Binding Devices}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:DeviceViewModel">
-                    <Border Classes="deviceCard" Margin="0,0,0,10">
-                      <StackPanel Spacing="8">
-                        <Grid ColumnDefinitions="Auto,*,Auto">
-                          <Ellipse Classes="dot" Fill="{Binding StatusBrush}" VerticalAlignment="Center" />
-                          <StackPanel Grid.Column="1" Margin="8,0,8,0" Spacing="1">
-                            <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold"
-                                       TextTrimming="CharacterEllipsis" />
-                            <TextBlock Classes="tiny" Text="{Binding Endpoint}" TextTrimming="CharacterEllipsis" />
-                          </StackPanel>
-                          <Border Grid.Column="2" Classes="chip" Padding="10,3" MinWidth="44" Background="#1B3350"
-                                  BorderBrush="#2A4E75">
-                            <TextBlock Text="{Binding DriveText}" FontSize="11.5" FontWeight="SemiBold"
-                                       Foreground="#8FD2FF"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       TextAlignment="Center" />
-                          </Border>
-                        </Grid>
+                    <!--
+                      一行一个设备：状态点 / 名称 + 状态 + 挂载根 / ROOT / 盘符 / ⋯
+                      左键点行 = 展开收起设置；⋯ = 完整操作菜单。
+                    -->
+                    <Border Classes="deviceRow" Margin="0,0,0,6" PointerPressed="OnDeviceRowPointerPressed">
+                      <StackPanel>
+                        <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" Height="36">
+                          <Ellipse Classes="dot" Fill="{Binding StatusBrush}" VerticalAlignment="Center"
+                                   Margin="2,0,0,0" />
 
-                        <StackPanel Orientation="Horizontal" Spacing="6" Margin="16,0,0,0">
-                          <TextBlock Text="{Binding StateText}" FontSize="12" FontWeight="SemiBold"
-                                     Foreground="{Binding StatusBrush}" />
-                          <TextBlock Classes="muted" Text="{Binding StatusText}" TextTrimming="CharacterEllipsis" />
-                        </StackPanel>
-
-                        <Grid ColumnDefinitions="Auto,*,Auto" Margin="16,0,0,0" ColumnSpacing="6">
-                          <TextBlock Classes="tiny" Text="{loc:Tr device.rootLabel}" VerticalAlignment="Center" />
-                          <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="4">
-                            <TextBox Text="{Binding RootPath, Mode=TwoWay}" TextAlignment="Center"
-                                     MinHeight="26" FontSize="11.5" Padding="6,2" VerticalContentAlignment="Center"
-                                     IsEnabled="{Binding CanChangeRoot}"
-                                     ToolTip.Tip="{loc:Tr device.rootTooltip}" />
-                            <Button Grid.Column="1" Width="24" MinHeight="26" Padding="0" Classes="ghost"
-                                    FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10"
-                                    Content="&#xE70D;" ToolTip.Tip="{loc:Tr device.presetsTooltip}">
-                              <Button.Flyout>
-                                <MenuFlyout Placement="BottomEdgeAlignedRight">
-                                  <MenuItem Header="{loc:Tr rootPreset.sdcard}" Command="{Binding PickRootCommand}" CommandParameter="/sdcard" />
-                                  <MenuItem Header="/storage/emulated/0" Command="{Binding PickRootCommand}" CommandParameter="/storage/emulated/0" />
-                                  <MenuItem Header="/data/local/tmp" Command="{Binding PickRootCommand}" CommandParameter="/data/local/tmp" />
-                                  <Separator />
-                                  <MenuItem Header="{loc:Tr rootPreset.data}" Command="{Binding PickRootCommand}" CommandParameter="/data" />
-                                  <MenuItem Header="{loc:Tr rootPreset.system}" Command="{Binding PickRootCommand}" CommandParameter="/system" />
-                                  <MenuItem Header="{loc:Tr rootPreset.all}" Command="{Binding PickRootCommand}" CommandParameter="/" />
-                                </MenuFlyout>
-                              </Button.Flyout>
-                            </Button>
+                          <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto,*" Margin="10,0,8,0"
+                                VerticalAlignment="Center">
+                            <!-- 只显示一个名字：备注 → 机型名 → 端点；完整信息在悬停提示里 -->
+                            <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
+                                       MaxWidth="176" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                                       ToolTip.Tip="{Binding NameTooltip}" />
+                            <TextBlock Grid.Column="1" Text="{Binding StateText}" FontSize="11.5" FontWeight="SemiBold"
+                                       Foreground="{Binding StatusBrush}" Margin="10,0,0,0"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="2" Classes="tiny" Text="{Binding DetailText}" Margin="6,0,0,0"
+                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                                       ToolTip.Tip="{Binding StatusText}" />
                           </Grid>
-                          <Border Grid.Column="2" Classes="chip" Padding="7,2" Background="#33261A" BorderBrush="#5A3C1E"
-                                  IsVisible="{Binding IsRootIdentity}" VerticalAlignment="Center"
-                                  ToolTip.Tip="{loc:Tr device.rootBadgeTooltip}">
-                            <TextBlock Text="ROOT" FontSize="9.5" FontWeight="Bold" Foreground="#F0A85A" />
+
+                          <Border Grid.Column="2" Classes="rootBadge" IsVisible="{Binding IsRootIdentity}"
+                                  Margin="0,0,6,0" ToolTip.Tip="{loc:Tr device.rootBadgeTooltip}">
+                            <TextBlock Text="ROOT" FontSize="9" FontWeight="Bold" Foreground="#F0A85A" />
                           </Border>
+
+                          <!-- 已挂载：点开资源管理器 -->
+                          <Button Grid.Column="3" Classes="driveBadge" Content="{Binding DriveText}"
+                                  Command="{Binding OpenDriveCommand}" IsVisible="{Binding IsMounted}"
+                                  ToolTip.Tip="{loc:Tr device.openDrive}" />
+
+                          <!-- 未挂载：纯状态徽标，不可点（设置入口是点行或 ⋯ 菜单） -->
+                          <Border Grid.Column="3" Classes="driveBadgeIdle" IsVisible="{Binding !IsMounted}"
+                                  ToolTip.Tip="{loc:Tr device.notMounted}">
+                            <TextBlock Text="{Binding DriveText}" FontSize="11.5"
+                                       Foreground="{StaticResource TextSecondary}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                          </Border>
+
+                          <Button Grid.Column="4" Classes="rowButton" Content="&#xE712;" Margin="6,0,0,0"
+                                  ToolTip.Tip="{loc:Tr device.more}">
+                            <Button.Flyout>
+                                <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                  <MenuItem Header="{loc:Tr device.open}" Command="{Binding OpenDriveCommand}"
+                                            IsVisible="{Binding IsMounted}" />
+                                  <MenuItem Header="{loc:Tr device.mount}" Command="{Binding MountCommand}"
+                                            IsVisible="{Binding CanMount}" />
+                                  <MenuItem Header="{loc:Tr device.unmount}" Command="{Binding UnmountCommand}"
+                                            IsVisible="{Binding CanUnmount}" />
+                                  <MenuItem Header="{loc:Tr device.connect}" Command="{Binding ConnectCommand}"
+                                            IsVisible="{Binding CanConnect}" />
+                                  <MenuItem Header="{loc:Tr device.disconnect}" Command="{Binding DisconnectCommand}"
+                                            IsVisible="{Binding CanDisconnect}" />
+                                  <Separator />
+                                  <MenuItem Header="{loc:Tr device.rootLabel}">
+                                    <MenuItem Header="{Binding RootPath}" IsEnabled="False" />
+                                    <Separator />
+                                    <MenuItem Header="{loc:Tr rootPreset.sdcard}" Command="{Binding PickRootCommand}"
+                                              CommandParameter="/sdcard" />
+                                    <MenuItem Header="/storage/emulated/0" Command="{Binding PickRootCommand}"
+                                              CommandParameter="/storage/emulated/0" />
+                                    <MenuItem Header="/data/local/tmp" Command="{Binding PickRootCommand}"
+                                              CommandParameter="/data/local/tmp" />
+                                    <MenuItem Header="{loc:Tr rootPreset.data}" Command="{Binding PickRootCommand}"
+                                              CommandParameter="/data" />
+                                    <MenuItem Header="{loc:Tr rootPreset.system}" Command="{Binding PickRootCommand}"
+                                              CommandParameter="/system" />
+                                    <MenuItem Header="{loc:Tr rootPreset.all}" Command="{Binding PickRootCommand}"
+                                              CommandParameter="/" />
+                                  </MenuItem>
+                                  <MenuItem Header="{loc:Tr device.settings}" Command="{Binding ToggleSettingsCommand}" />
+                                  <Separator />
+                                  <MenuItem Header="{loc:Tr device.autoConnect}" ToggleType="CheckBox"
+                                            IsChecked="{Binding AutoConnect, Mode=TwoWay}"
+                                            ToolTip.Tip="{loc:Tr device.autoConnectTooltip}" />
+                                  <MenuItem Header="{loc:Tr device.autoMount}" ToggleType="CheckBox"
+                                            IsChecked="{Binding AutoMount, Mode=TwoWay}"
+                                            ToolTip.Tip="{loc:Tr device.autoMountTooltip}" />
+                                  <Separator />
+                                  <MenuItem Header="{loc:Tr device.remove}" Command="{Binding RemoveCommand}" />
+                                </MenuFlyout>
+                            </Button.Flyout>
+                          </Button>
                         </Grid>
 
-                        <Grid ColumnDefinitions="*,Auto,Auto" Margin="16,0,0,0" ColumnSpacing="10">
-                          <TextBlock Classes="tiny" Text="{Binding SubtitleText}" VerticalAlignment="Center"
-                                     TextTrimming="CharacterEllipsis" />
-                          <CheckBox Grid.Column="1" Content="{loc:Tr device.autoConnect}" IsChecked="{Binding AutoConnect}"
-                                    FontSize="11" MinHeight="20" VerticalAlignment="Center"
-                                    ToolTip.Tip="{loc:Tr device.autoConnectTooltip}" />
-                          <CheckBox Grid.Column="2" Content="{loc:Tr device.autoMount}" IsChecked="{Binding AutoMount}"
-                                    FontSize="11" MinHeight="20" VerticalAlignment="Center"
-                                    ToolTip.Tip="{loc:Tr device.autoMountTooltip}" />
-                        </Grid>
-
-                        <TextBlock IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                   Text="{Binding ErrorMessage}" TextWrapping="Wrap" FontSize="11.5"
-                                   Foreground="#F87171" Margin="16,0,0,0" />
-
-                        <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,0">
-                          <StackPanel Orientation="Horizontal" Spacing="6">
-                            <Button Content="{loc:Tr device.connect}" Classes="primary" Command="{Binding ConnectCommand}"
-                                    IsVisible="{Binding CanConnect}" />
-                            <Button Content="{loc:Tr device.mount}" Classes="primary" Command="{Binding MountCommand}"
-                                    IsVisible="{Binding CanMount}" />
-                            <Button Content="{loc:Tr device.open}" Command="{Binding OpenDriveCommand}"
-                                    IsVisible="{Binding IsMounted}" />
-                            <Button Content="{loc:Tr device.unmount}" Command="{Binding UnmountCommand}"
-                                    IsVisible="{Binding CanUnmount}" />
-                            <Button Content="{loc:Tr device.disconnect}" Command="{Binding DisconnectCommand}"
-                                    IsVisible="{Binding CanDisconnect}" />
-                          </StackPanel>
-                          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
-                            <ComboBox Width="88" ItemsSource="{Binding DriveLetterOptions}"
+                        <!-- 行内编辑挂载根：只有点「编辑挂载根…」才出现 -->
+                        <StackPanel Name="SettingsArea" IsVisible="{Binding IsEditingRoot}" Spacing="8"
+                                    Margin="18,0,0,8">
+                          <Grid ColumnDefinitions="66,*" ColumnSpacing="8">
+                            <TextBlock Classes="tiny" Text="{loc:Tr device.nameLabel}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="{Binding NameDraft, Mode=TwoWay}"
+                                     PlaceholderText="{loc:Tr device.namePlaceholder}"
+                                     MinHeight="28" FontSize="11.5" Padding="8,2"
+                                     VerticalContentAlignment="Center" />
+                          </Grid>
+                          <Grid ColumnDefinitions="66,*" ColumnSpacing="8">
+                            <TextBlock Classes="tiny" Text="{loc:Tr device.letterLabel}" VerticalAlignment="Center" />
+                            <ComboBox Grid.Column="1" HorizontalAlignment="Left" Width="132" MinHeight="28"
+                                      FontSize="11.5" Padding="8,2" ItemsSource="{Binding DriveLetterOptions}"
                                       SelectedItem="{Binding SelectedDriveLetter, Mode=TwoWay}"
-                                      IsVisible="{Binding CanChangeDriveLetter}" ToolTip.Tip="{loc:Tr device.preferredDrive}">
+                                      IsEnabled="{Binding CanChangeDriveLetter}">
                               <ComboBox.ItemTemplate>
                                 <DataTemplate x:DataType="vm:DriveOption">
                                   <TextBlock Text="{Binding Label}" />
                                 </DataTemplate>
                               </ComboBox.ItemTemplate>
                             </ComboBox>
-                            <Button Classes="icon ghost" Content="&#xE74D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                    Command="{Binding RemoveCommand}" ToolTip.Tip="{loc:Tr device.remove}" />
+                          </Grid>
+                          <Grid ColumnDefinitions="66,*" ColumnSpacing="8">
+                            <TextBlock Classes="tiny" Text="{loc:Tr device.rootLabel}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="{Binding RootDraft, Mode=TwoWay}" PlaceholderText="/sdcard"
+                                     MinHeight="28" FontSize="11.5" Padding="8,2"
+                                     VerticalContentAlignment="Center" />
+                          </Grid>
+                          <WrapPanel>
+                              <Button Classes="preset" Content="/sdcard" Margin="0,0,6,0"
+                                      Command="{Binding PickRootCommand}" CommandParameter="/sdcard" />
+                              <Button Classes="preset" Content="/storage/emulated/0" Margin="0,0,6,0"
+                                      Command="{Binding PickRootCommand}" CommandParameter="/storage/emulated/0" />
+                              <Button Classes="preset" Content="/data" Margin="0,0,6,0"
+                                      Command="{Binding PickRootCommand}" CommandParameter="/data" />
+                              <Button Classes="preset" Content="/system" Margin="0,0,6,0"
+                                      Command="{Binding PickRootCommand}" CommandParameter="/system" />
+                              <Button Classes="preset" Content="/" Margin="0,0,6,0"
+                                      Command="{Binding PickRootCommand}" CommandParameter="/" />
+                          </WrapPanel>
+                          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+                            <Button Classes="ghost" Content="{loc:Tr device.cancel}"
+                                    Command="{Binding CancelSettingsCommand}" MinHeight="28"
+                                    Padding="12,2" FontSize="11.5" />
+                            <Button Classes="primary" Content="{loc:Tr device.apply}"
+                                    Command="{Binding ApplySettingsCommand}" MinHeight="28"
+                                    Padding="16,2" FontSize="11.5" />
                           </StackPanel>
-                        </Grid>
+                        </StackPanel>
+
+                        <TextBlock IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                   Text="{Binding ErrorMessage}" TextWrapping="Wrap" FontSize="11"
+                                   Foreground="#F87171" Margin="18,0,4,8" />
                       </StackPanel>
                     </Border>
                   </DataTemplate>

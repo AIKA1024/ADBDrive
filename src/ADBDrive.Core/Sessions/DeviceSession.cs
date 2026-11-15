@@ -98,18 +98,25 @@ public sealed class DeviceSession : IDisposable
         ? "root"
         : string.IsNullOrEmpty(_identityUid) ? Loc.T("identity.unknown") : $"uid {_identityUid}";
 
-    public string DisplayName
+    /// <summary>机型名（adb devices -l 里的 model；个别设备只给代号 device）。取不到返回 null。</summary>
+    public string? ModelName
     {
         get
         {
-            if (!string.IsNullOrWhiteSpace(_config.DisplayName))
+            var name = Info?.Model;
+            if (string.IsNullOrWhiteSpace(name))
             {
-                return _config.DisplayName!;
+                name = Info?.Device;
             }
 
-            return Info?.Model ?? Info?.Device ?? _config.Endpoint;
+            return string.IsNullOrWhiteSpace(name) ? null : name;
         }
     }
+
+    /// <summary>界面显示名，优先级：备注 → 机型名 → 端点（只显示一个）。</summary>
+    public string DisplayName => string.IsNullOrWhiteSpace(_config.DisplayName)
+        ? ModelName ?? Endpoint
+        : _config.DisplayName!;
 
     /// <summary>状态变化（可能在后台线程触发）。</summary>
     public event Action<DeviceSession>? Changed;

@@ -98,23 +98,121 @@
     <Setter Property="Padding" Value="10,5" />
   </Style>
 
-  <Style Selector="Border.deviceCard">
-    <Setter Property="Background" Value="#212328" />
-    <Setter Property="BorderBrush" Value="{StaticResource SurfaceBorder}" />
+  <!--
+    设备列表的一行。Fluent 2 的列表项：8px 圆角、1px 描边、悬停只提亮背景和描边，
+    不在悬停时改尺寸或加阴影（避免列表滚动时抖动）。
+  -->
+  <Style Selector="Border.deviceRow">
+    <Setter Property="Background" Value="#1F2126" />
+    <Setter Property="BorderBrush" Value="#2C2F34" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="10" />
-    <Setter Property="Padding" Value="14" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="10,4" />
     <Setter Property="Transitions">
       <Transitions>
-        <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
-        <BrushTransition Property="Background" Duration="0:0:0.15" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
+        <BrushTransition Property="Background" Duration="0:0:0.12" />
       </Transitions>
     </Setter>
   </Style>
 
-  <Style Selector="Border.deviceCard:pointerover">
+  <Style Selector="Border.deviceRow:pointerover">
     <Setter Property="Background" Value="#25282D" />
-    <Setter Property="BorderBrush" Value="{StaticResource SurfaceBorderStrong}" />
+    <Setter Property="BorderBrush" Value="#3A3E45" />
+  </Style>
+
+  <!-- ROOT 徽标：琥珀色，克制一点，不抢设备名的注意力 -->
+  <Style Selector="Border.rootBadge">
+    <Setter Property="Background" Value="#33261A" />
+    <Setter Property="BorderBrush" Value="#5A3C1E" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Padding" Value="5,1" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <!-- 盘符徽标：已挂载是可点的蓝底，未挂载是弱化的灰底 -->
+  <Style Selector="Button.driveBadge">
+    <Setter Property="Width" Value="40" />
+    <Setter Property="Height" Value="24" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Background" Value="#1B3350" />
+    <Setter Property="BorderBrush" Value="#2A4E75" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Foreground" Value="#8FD2FF" />
+    <Setter Property="FontSize" Value="11.5" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="Button.driveBadge:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#22405F" />
+    <Setter Property="BorderBrush" Value="#3A6896" />
+    <Setter Property="TextBlock.Foreground" Value="#BFE6FF" />
+  </Style>
+
+  <!-- 未挂载时的盘符徽标：和 Button.driveBadge.idle 同尺寸同配色，但不可交互 -->
+  <Style Selector="Border.driveBadgeIdle">
+    <Setter Property="Width" Value="40" />
+    <Setter Property="Height" Value="24" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Background" Value="#24262B" />
+    <Setter Property="BorderBrush" Value="#35393F" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+
+  <Style Selector="Button.driveBadge.idle">
+    <Setter Property="Background" Value="#24262B" />
+    <Setter Property="BorderBrush" Value="#35393F" />
+    <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
+    <Setter Property="FontWeight" Value="Normal" />
+  </Style>
+
+  <Style Selector="Button.driveBadge.idle:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#2C2F35" />
+    <Setter Property="BorderBrush" Value="#44494F" />
+    <Setter Property="TextBlock.Foreground" Value="{StaticResource TextPrimary}" />
+  </Style>
+
+  <!-- 行尾的「⋯」：只有图标，悬停才出现底色 -->
+  <Style Selector="Button.rowButton">
+    <Setter Property="Width" Value="26" />
+    <Setter Property="Height" Value="24" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
+    <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="Button.rowButton:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#2C2F35" />
+    <Setter Property="TextBlock.Foreground" Value="{StaticResource TextPrimary}" />
+  </Style>
+
+  <!-- 挂载根预设的小胶囊 -->
+  <Style Selector="Button.preset">
+    <Setter Property="MinHeight" Value="22" />
+    <Setter Property="Padding" Value="9,1" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="CornerRadius" Value="11" />
+    <Setter Property="Background" Value="#24262B" />
+    <Setter Property="BorderBrush" Value="#35393F" />
+    <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
+  </Style>
+
+  <Style Selector="Button.preset:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#2C2F35" />
+    <Setter Property="BorderBrush" Value="#44494F" />
+    <Setter Property="TextBlock.Foreground" Value="{StaticResource TextPrimary}" />
   </Style>
 
   <Style Selector="Ellipse.dot">
