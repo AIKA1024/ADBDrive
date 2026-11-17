@@ -10,6 +10,9 @@ namespace ADBDrive.ViewModels;
 /// <summary>日志行。</summary>
 public sealed class LogItemViewModel
 {
+    /// <summary>时间、级别、消息之间的间隔（等宽字体下与原来 8px 的间距接近）。</summary>
+    private const string ColumnGap = "  ";
+
     public LogItemViewModel(LogEntry entry)
     {
         Timestamp = entry.Timestamp;
@@ -32,6 +35,9 @@ public sealed class LogItemViewModel
             LogLevel.Debug or LogLevel.Trace => Brush.Parse("#7C838D"),
             _ => Brush.Parse("#7FB6E8"),
         };
+
+        LineText = string.Concat(Time, ColumnGap, LevelText, ColumnGap, Message);
+        LevelStart = Time.Length + ColumnGap.Length;
     }
 
     public DateTime Timestamp { get; }
@@ -45,6 +51,15 @@ public sealed class LogItemViewModel
     public string Message { get; }
 
     public IBrush LevelBrush { get; }
+
+    /// <summary>屏幕上这一行的完整文本（时间 + 级别 + 消息），日志选区与复制都以它为准。</summary>
+    public string LineText { get; }
+
+    /// <summary>级别两个字在 <see cref="LineText"/> 中的起始下标。</summary>
+    public int LevelStart { get; }
+
+    /// <summary>级别的字符数。</summary>
+    public int LevelLength => LevelText.Length;
 
     public string Tooltip => $"{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{LevelText}] {Category}";
 

@@ -154,6 +154,27 @@
     <Setter Property="TextBlock.Foreground" Value="#BFE6FF" />
   </Style>
 
+  <!-- 日志列表：行级多选，紧凑、无边框、无整块底色 -->
+  <Style Selector="ListBox.logList">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+
+  <Style Selector="ListBox.logList ListBoxItem">
+    <Setter Property="Padding" Value="2,1" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="CornerRadius" Value="4" />
+  </Style>
+
+  <Style Selector="ListBox.logList ListBoxItem:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#1B1E23" />
+  </Style>
+
+  <Style Selector="ListBox.logList ListBoxItem:selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="#233246" />
+  </Style>
+
   <!-- 未挂载时的盘符徽标：和 Button.driveBadge.idle 同尺寸同配色，但不可交互 -->
   <Style Selector="Border.driveBadgeIdle">
     <Setter Property="Width" Value="40" />

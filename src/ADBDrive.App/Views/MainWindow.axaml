@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:ADBDrive.ViewModels"
         xmlns:loc="using:ADBDrive.Localization"
+        xmlns:controls="using:ADBDrive.Controls"
         x:Class="ADBDrive.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="{loc:Tr app.title}"
@@ -437,32 +438,27 @@
           </StackPanel>
         </Grid>
 
-        <Border Grid.Row="1" IsVisible="{Binding IsLogVisible}" Height="132" Margin="0,8,0,0"
+        <Border Name="LogPanel" Grid.Row="1" IsVisible="{Binding IsLogVisible}" Height="132" Margin="0,8,0,0"
+                Focusable="True"
                 Background="#141518" CornerRadius="8" Padding="10,8">
           <Grid>
-            <ScrollViewer Name="LogScroll" VerticalScrollBarVisibility="Auto">
-              <ItemsControl ItemsSource="{Binding Logs}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:LogItemViewModel">
-                    <Grid ColumnDefinitions="Auto,Auto,*" Margin="0,0,0,1">
-                      <Grid.ContextFlyout>
-                        <MenuFlyout>
-                          <MenuItem Header="{loc:Tr logs.copyLine}" Click="OnCopyLogLineClick" />
-                          <MenuItem Header="{loc:Tr logs.copyAll}" Click="OnCopyLogsClick" />
-                        </MenuFlyout>
-                      </Grid.ContextFlyout>
-                      <TextBlock Classes="mono" Text="{Binding Time}" Foreground="#5A616B" />
-                      <TextBlock Grid.Column="1" Classes="mono" Text="{Binding LevelText}"
-                                 Foreground="{Binding LevelBrush}" Margin="8,0" />
-                      <!-- 可选中的文本：拖选后 Ctrl+C 就能复制这一段 -->
-                      <SelectableTextBlock Grid.Column="2" Text="{Binding Message}"
-                                           FontFamily="Cascadia Mono, Consolas, monospace" FontSize="11.5"
-                                           TextWrapping="Wrap" Foreground="#C3C8D0" />
-                    </Grid>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </ScrollViewer>
+            <!-- 行级虚拟化；整行是一个可选择文本面，跨行拖选由代码统一调度 -->
+            <ListBox Name="LogList" Classes="logList"
+                     ItemsSource="{Binding Logs}"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:LogItemViewModel">
+                  <controls:LogLineText LineText="{Binding LineText}"
+                                        LevelStart="{Binding LevelStart}"
+                                        LevelLength="{Binding LevelLength}"
+                                        LevelBrush="{Binding LevelBrush}"
+                                        FontFamily="Cascadia Mono, Consolas, monospace" FontSize="11.5"
+                                        TextWrapping="Wrap" Foreground="#C3C8D0"
+                                        SelectionBrush="#3D6FA8"
+                                        Focusable="False" ContextFlyout="{x:Null}" />
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
             <TextBlock Text="{loc:Tr logs.noMatch}" Classes="tiny" IsVisible="{Binding LogEmptyVisible}"
                        HorizontalAlignment="Center" VerticalAlignment="Center" />
           </Grid>

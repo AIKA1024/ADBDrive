@@ -126,8 +126,9 @@ internal static class StringTables
         ["logs.searchClear"] = "清除搜索",
         ["logs.searchCount"] = "命中 {0} / 共 {1} 条",
         ["logs.noMatch"] = "没有匹配的日志",
-        ["logs.copyLine"] = "复制此行",
         ["logs.copyAll"] = "复制全部",
+        ["logs.copySelected"] = "复制所选（{0} 行）",
+        ["logs.copySelected.one"] = "复制所选（1 行）",
         ["logs.copied"] = "已复制 {0} 行",
         ["logs.copied.one"] = "已复制 1 行",
 
@@ -317,8 +318,9 @@ internal static class StringTables
         ["logs.searchClear"] = "Clear search",
         ["logs.searchCount"] = "{0} of {1} matching",
         ["logs.noMatch"] = "No matching entries",
-        ["logs.copyLine"] = "Copy this line",
         ["logs.copyAll"] = "Copy all",
+        ["logs.copySelected"] = "Copy {0} selected rows",
+        ["logs.copySelected.one"] = "Copy 1 selected row",
         ["logs.copied"] = "Copied {0} lines",
         ["logs.copied.one"] = "Copied 1 line",
 
