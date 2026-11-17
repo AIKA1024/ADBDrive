@@ -137,7 +137,6 @@ internal static class StringTables
 
         // ===== 托盘 =====
         ["tray.show"] = "显示主窗口",
-        ["tray.hide"] = "隐藏到托盘",
         ["tray.exit"] = "退出 ADBDrive",
 
         // ===== 会话状态 =====
@@ -329,7 +328,6 @@ internal static class StringTables
 
         // ===== tray =====
         ["tray.show"] = "Show main window",
-        ["tray.hide"] = "Hide to tray",
         ["tray.exit"] = "Exit ADBDrive",
 
         // ===== session state =====

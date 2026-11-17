@@ -1,19 +1,18 @@
-using System;
-using System.Runtime.InteropServices;
 using Avalonia;
+using ADBDrive.Services;
 
 namespace ADBDrive;
 
 internal static class Program
 {
-    private static Mutex? _singleInstanceMutex;
-
     [STAThread]
     public static void Main(string[] args)
     {
-        if (!AcquireSingleInstance())
+        if (!SingleInstance.Acquire())
         {
-            MessageBoxW(IntPtr.Zero, "ADBDrive 已经在运行，请从系统托盘打开窗口。", "ADBDrive", 0x40);
+            // 已有一个实例在运行：通知它把窗口拉到前台，然后安静退出。
+            // 不再弹 MessageBox 让用户自己去托盘里找。
+            SingleInstance.NotifyExistingInstance();
             return;
         }
 
@@ -45,21 +44,4 @@ internal static class Program
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .LogToTrace();
-
-    /// <summary>托盘程序只允许一个实例，否则会出现多个图标并争抢同一盘符。</summary>
-    private static bool AcquireSingleInstance()
-    {
-        try
-        {
-            _singleInstanceMutex = new Mutex(initiallyOwned: true, @"Local\ADBDrive.SingleInstance", out var createdNew);
-            return createdNew;
-        }
-        catch
-        {
-            return true;
-        }
-    }
-
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern int MessageBoxW(IntPtr hWnd, string text, string caption, uint type);
 }

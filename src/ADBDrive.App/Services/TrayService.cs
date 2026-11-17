@@ -15,7 +15,6 @@ public sealed class TrayService : IDisposable
     private TrayIcons? _icons;
     private MainWindow? _window;
     private NativeMenuItem? _showItem;
-    private NativeMenuItem? _hideItem;
     private NativeMenuItem? _exitItem;
     private bool _disposed;
 
@@ -33,10 +32,6 @@ public sealed class TrayService : IDisposable
         _showItem = new NativeMenuItem(Loc.T("tray.show"));
         _showItem.Click += (_, _) => ShowWindow();
         menu.Items.Add(_showItem);
-
-        _hideItem = new NativeMenuItem(Loc.T("tray.hide"));
-        _hideItem.Click += (_, _) => HideWindow();
-        menu.Items.Add(_hideItem);
 
         menu.Items.Add(new NativeMenuItemSeparator());
 
@@ -88,11 +83,6 @@ public sealed class TrayService : IDisposable
             _showItem.Header = Loc.T("tray.show");
         }
 
-        if (_hideItem is not null)
-        {
-            _hideItem.Header = Loc.T("tray.hide");
-        }
-
         if (_exitItem is not null)
         {
             _exitItem.Header = Loc.T("tray.exit");
@@ -118,9 +108,8 @@ public sealed class TrayService : IDisposable
         }
 
         _window.Activate();
+        WindowActivation.BringToFront(_window);
     }
-
-    public void HideWindow() => _window?.Hide();
 
     public void MarkExiting() => IsExiting = true;
 

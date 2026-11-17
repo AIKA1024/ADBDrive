@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using ADBDrive.Services;
 using ADBDrive.ViewModels;
 using ADBDrive.Views;
@@ -38,6 +39,15 @@ public partial class App : Application
 
             Tray.Attach(window);
             Tray.ExitRequested += () => Exit(desktop);
+
+            // 第二个实例启动时只发信号；这里在 UI 线程上把已运行的窗口显示并置前。
+            SingleInstance.Listen(() => Dispatcher.UIThread.Post(() =>
+            {
+                if (!IsExiting)
+                {
+                    Tray.ShowWindow();
+                }
+            }));
 
             window.Opened += async (_, _) =>
             {
