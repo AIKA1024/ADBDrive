@@ -24,6 +24,7 @@ internal static class StringTables
         ["settings.title"] = "设置",
         ["settings.minimizeToTray"] = "关闭窗口时收进托盘",
         ["settings.startMinimized"] = "启动时最小化到托盘",
+        ["settings.runAtStartup"] = "开机时自动启动",
         ["settings.language"] = "语言",
         ["settings.openConfig"] = "打开配置目录",
         ["settings.openLogs"] = "打开日志目录",
@@ -49,6 +50,7 @@ internal static class StringTables
         ["banner.dismiss"] = "关闭提示",
         ["banner.needEndpoint"] = "请填写设备地址，例如 192.168.1.20:5555",
         ["banner.unauthorized"] = "设备未授权：请解锁手机并在弹窗中点击「允许」。之后会自动继续。",
+        ["banner.startupFailed"] = "设置开机自启失败：{0}",
 
         // ===== 设备列表 =====
         ["devices.title"] = "我的设备",
@@ -215,6 +217,7 @@ internal static class StringTables
         ["settings.title"] = "Settings",
         ["settings.minimizeToTray"] = "Minimize to tray when closing",
         ["settings.startMinimized"] = "Start minimized to tray",
+        ["settings.runAtStartup"] = "Start with Windows",
         ["settings.language"] = "Language",
         ["settings.openConfig"] = "Open config folder",
         ["settings.openLogs"] = "Open log folder",
@@ -240,6 +243,7 @@ internal static class StringTables
         ["banner.dismiss"] = "Dismiss",
         ["banner.needEndpoint"] = "Enter the device address, for example 192.168.1.20:5555",
         ["banner.unauthorized"] = "Device not authorized. Unlock the phone and tap \"Allow\" in the prompt; it will continue automatically.",
+        ["banner.startupFailed"] = "Failed to set startup option: {0}",
 
         // ===== device list =====
         ["devices.title"] = "My devices",

@@ -116,6 +116,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private bool _startMinimized;
 
+    /// <summary>开机自启（设置面板可改）；状态取自注册表，注册表是唯一来源。</summary>
+    [ObservableProperty]
+    private bool _runAtStartup;
+
+    private bool _suppressStartupToggle;
+
     public MainWindowViewModel(AppHost host)
     {
         _host = host;
@@ -126,6 +132,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         _minimizeToTray = host.Config.MinimizeToTray;
         _startMinimized = host.Config.StartMinimized;
+        _runAtStartup = StartupRegistration.IsEnabled();
 
         RebuildLogLevelOptions(null);
         BuildLanguageOptions();
@@ -198,6 +205,29 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _host.Config.StartMinimized = value;
         _host.SaveConfig();
         _host.Log.Info("设置", value ? "启动时最小化到托盘" : "启动时显示主窗口");
+    }
+
+    partial void OnRunAtStartupChanged(bool value)
+    {
+        if (_suppressStartupToggle)
+        {
+            return;
+        }
+
+        var (success, error) = StartupRegistration.SetEnabled(value);
+        if (success)
+        {
+            _host.Log.Info("设置", value ? "已启用开机自启" : "已关闭开机自启");
+            return;
+        }
+
+        // 写注册表失败（权限 / 安全软件拦截）：回滚勾选并提示，避免界面显示与实际不符。
+        _suppressStartupToggle = true;
+        RunAtStartup = !value;
+        _suppressStartupToggle = false;
+        _host.Log.Warn("设置", $"设置开机自启失败: {error}");
+        BannerMessage = Loc.F("banner.startupFailed", error ?? "未知错误");
+        BannerVisible = true;
     }
 
     partial void OnSelectedLanguageChanged(LanguageOption? value)

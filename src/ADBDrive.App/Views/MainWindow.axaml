@@ -43,6 +43,7 @@
                     <StackPanel Spacing="10">
                       <CheckBox IsChecked="{Binding MinimizeToTray, Mode=TwoWay}" Content="{loc:Tr settings.minimizeToTray}" />
                       <CheckBox IsChecked="{Binding StartMinimized, Mode=TwoWay}" Content="{loc:Tr settings.startMinimized}" />
+                      <CheckBox IsChecked="{Binding RunAtStartup, Mode=TwoWay}" Content="{loc:Tr settings.runAtStartup}" />
                     </StackPanel>
                     <Border Height="1" Background="#2E3137" />
                     <Grid ColumnDefinitions="*,Auto">

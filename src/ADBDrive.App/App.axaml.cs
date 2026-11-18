@@ -51,7 +51,9 @@ public partial class App : Application
 
             window.Opened += async (_, _) =>
             {
-                if (Host.Config.StartMinimized)
+                // 开机自启（--startup）与「启动时最小化」都直接进托盘，不弹主窗口。
+                if (Host.Config.StartMinimized
+                    || StartupRegistration.IsStartupLaunch(Environment.GetCommandLineArgs()))
                 {
                     window.Hide();
                 }
